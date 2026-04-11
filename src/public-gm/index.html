@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Netheril — GM Console</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --bg: #1a1a2e;
+      --surface: #16213e;
+      --border: #0f3460;
+      --accent: #e94560;
+      --text: #eee;
+      --muted: #888;
+      --gold: #c4a55a;
+    }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 12px 24px; display: flex; align-items: center; justify-content: space-between; }
+    header h1 { font-size: 1.3rem; color: var(--gold); }
+    header .hint { font-size: 0.8rem; color: var(--muted); }
+
+    /* Tabs */
+    .tabs { display: flex; background: var(--surface); border-bottom: 1px solid var(--border); }
+    .tab { padding: 10px 24px; cursor: pointer; color: var(--muted); border-bottom: 2px solid transparent; font-weight: 600; font-size: 0.9rem; transition: all 0.2s; }
+    .tab:hover { color: var(--text); }
+    .tab.active { color: var(--gold); border-bottom-color: var(--gold); }
+
+    .tab-content { display: none; height: calc(100vh - 94px); }
+    .tab-content.active { display: flex; }
+
+    /* Shared components */
+    .btn { padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; font-size: 0.85rem; font-weight: 600; }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-secondary { background: var(--border); color: var(--text); }
+    .btn-danger { background: #a00; color: #fff; }
+    .btn-sm { padding: 5px 10px; font-size: 0.8rem; }
+    .btn:hover { opacity: 0.85; }
+
+    /* ========== SITES TAB ========== */
+    .sites-layout { display: flex; width: 100%; }
+    .sites-sidebar { width: 300px; min-width: 300px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+    .sites-sidebar-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .sites-sidebar-header h2 { font-size: 1rem; }
+    #site-list { flex: 1; overflow-y: auto; padding: 8px; }
+
+    .site-item { padding: 10px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.15s; }
+    .site-item:hover { background: rgba(255,255,255,0.05); }
+    .site-item.selected { background: rgba(233,69,96,0.15); border: 1px solid var(--accent); }
+    .site-item .site-glyph-icon { font-size: 1.4rem; }
+    .site-item .site-info { flex: 1; min-width: 0; }
+    .site-item .site-name { font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .site-item .site-crystal { font-size: 0.75rem; color: var(--muted); }
+
+    .site-editor { flex: 1; overflow-y: auto; padding: 24px; }
+    .site-editor h2 { font-size: 1.1rem; color: var(--gold); margin-bottom: 16px; }
+    .field { margin-bottom: 14px; }
+    .field label { display: block; font-size: 0.8rem; color: var(--muted); margin-bottom: 4px; }
+    .field input, .field textarea, .field select {
+      width: 100%; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border);
+      border-radius: 4px; color: var(--text); font-size: 0.9rem; font-family: inherit;
+    }
+    .field textarea { min-height: 100px; resize: vertical; }
+    .field-row { display: flex; gap: 12px; }
+    .field-row .field { flex: 1; }
+
+    /* Pages section */
+    .pages-section { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 16px; }
+    .pages-section h3 { font-size: 0.95rem; color: var(--gold); margin-bottom: 10px; display: flex; align-items: center; justify-content: space-between; }
+    .page-card { background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 12px; margin-bottom: 10px; }
+    .page-card-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .page-card-header input { flex: 1; }
+    .page-card .field { margin-bottom: 8px; }
+
+    /* ========== PINS TAB ========== */
+
+    /* ========== CRYSTALS TAB ========== */
+    .crystal-item { padding: 10px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.15s; }
+    .crystal-item:hover { background: rgba(255,255,255,0.05); }
+    .crystal-item.selected { background: rgba(233,69,96,0.15); border: 1px solid var(--accent); }
+    .crystal-swatch { width: 28px; height: 28px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.15); flex-shrink: 0; }
+    .crystal-item .crystal-info { flex: 1; min-width: 0; }
+    .crystal-item .crystal-color-name { font-weight: 600; font-size: 0.9rem; text-transform: capitalize; }
+    .crystal-item .crystal-hex { font-size: 0.75rem; color: var(--muted); font-family: monospace; }
+    .answer-grid { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+    .answer-grid .answer-idx { width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; font-size: 0.85rem; font-family: monospace; color: var(--text); }
+    .answer-grid input { width: 36px; height: 36px; text-align: center; padding: 0; font-size: 0.85rem; font-family: monospace; }
+
+    /* ========== PINS TAB (continued) ========== */
+    .pins-layout { display: flex; width: 100%; }
+    .pins-sidebar { width: 300px; min-width: 300px; background: var(--surface); border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+    .pins-sidebar-header { padding: 12px 16px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .pins-sidebar-header h2 { font-size: 1rem; }
+    #pin-list { flex: 1; overflow-y: auto; padding: 8px; }
+
+    .pin-item { padding: 10px 12px; border-radius: 6px; cursor: pointer; display: flex; align-items: center; gap: 10px; transition: background 0.15s; }
+    .pin-item:hover { background: rgba(255,255,255,0.05); }
+    .pin-item.selected { background: rgba(233,69,96,0.15); border: 1px solid var(--accent); }
+    .pin-item .pin-icon { font-size: 1.4rem; }
+    .pin-item .pin-info { flex: 1; min-width: 0; }
+    .pin-item .pin-title { font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .pin-item .pin-coords { font-size: 0.75rem; color: var(--muted); }
+    .pin-item .pin-delete { background: none; border: none; color: #666; cursor: pointer; font-size: 1.1rem; padding: 4px; }
+    .pin-item .pin-delete:hover { color: var(--accent); }
+
+    .map-area { flex: 1; position: relative; overflow: hidden; display: flex; align-items: center; justify-content: center; background: #111; }
+    #map-container { position: relative; display: inline-block; }
+    #map-img { display: block; max-width: 100%; max-height: calc(100vh - 94px); user-select: none; }
+    #map-placeholder { color: var(--muted); text-align: center; padding: 40px; }
+    #map-placeholder label { display: inline-block; padding: 12px 24px; background: var(--accent); color: #fff; border-radius: 6px; cursor: pointer; margin-top: 12px; font-weight: 600; }
+    #map-upload { display: none; }
+
+    .map-pin { position: absolute; transform: translate(-50%,-100%); font-size: 28px; cursor: pointer; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6)); transition: transform 0.15s; z-index: 10; }
+    .map-pin:hover { transform: translate(-50%,-100%) scale(1.25); }
+    .map-pin.selected { transform: translate(-50%,-100%) scale(1.3); filter: drop-shadow(0 0 8px var(--accent)); z-index: 20; }
+
+    .editor-panel { position: absolute; top: 12px; right: 12px; width: 320px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; z-index: 30; display: none; }
+    .editor-panel.open { display: block; }
+    .editor-panel h3 { font-size: 0.95rem; margin-bottom: 12px; color: var(--gold); }
+    .editor-panel label { display: block; font-size: 0.8rem; color: var(--muted); margin-top: 10px; margin-bottom: 4px; }
+    .editor-panel input, .editor-panel textarea { width: 100%; padding: 8px 10px; background: var(--bg); border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 0.9rem; }
+    .editor-panel textarea { min-height: 120px; resize: vertical; font-family: inherit; }
+    .editor-panel .btn-row { display: flex; gap: 8px; margin-top: 14px; }
+
+    #mode-indicator { position: absolute; top: 12px; left: 12px; background: var(--accent); color: #fff; padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; z-index: 30; display: none; }
+    #mode-indicator.active { display: block; }
+
+    .toolbar { position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%); display: flex; gap: 8px; z-index: 30; }
+    .toolbar .btn { padding: 10px 20px; font-size: 0.9rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>⚔️ Netheril — GM Console</h1>
+    <span class="hint">Player interface on port 3000</span>
+  </header>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="sites">📜 Sites (Thuls)</div>
+    <div class="tab" data-tab="crystals">🔮 Crystals</div>
+    <div class="tab" data-tab="pins">📌 Map Pins</div>
+  </div>
+
+  <!-- ==================== SITES TAB ==================== -->
+  <div class="tab-content active" id="tab-sites">
+    <div class="sites-layout">
+      <div class="sites-sidebar">
+        <div class="sites-sidebar-header">
+          <h2>Thul Sites</h2>
+          <button class="btn btn-primary btn-sm" id="btn-add-site">+ Add Site</button>
+        </div>
+        <div id="site-list"></div>
+      </div>
+      <div class="site-editor" id="site-editor">
+        <p style="color: var(--muted); padding: 40px; text-align: center;">Select a site to edit, or add a new one.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== CRYSTALS TAB ==================== -->
+  <div class="tab-content" id="tab-crystals">
+    <div class="sites-layout">
+      <div class="sites-sidebar">
+        <div class="sites-sidebar-header">
+          <h2>Crystals</h2>
+          <button class="btn btn-primary btn-sm" id="btn-add-crystal">+ Add Crystal</button>
+        </div>
+        <div id="crystal-list"></div>
+        <div id="crystal-last-scan" style="padding:12px 16px; border-top:1px solid var(--border); font-size:0.8rem; color:var(--muted);">
+          Last scanned: <span id="last-scan-hex">—</span>
+        </div>
+      </div>
+      <div class="site-editor" id="crystal-editor">
+        <p style="color: var(--muted); padding: 40px; text-align: center;">Select a crystal to edit, or scan a new RFID tag and click "+ Add Crystal".</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== PINS TAB ==================== -->
+  <div class="tab-content" id="tab-pins">
+    <div class="pins-layout">
+      <div class="pins-sidebar">
+        <div class="pins-sidebar-header">
+          <h2>Map Pins</h2>
+          <button class="btn btn-primary btn-sm" id="btn-add-pin">+ New Pin</button>
+        </div>
+        <div id="pin-list"></div>
+        <div style="padding: 12px; border-top: 1px solid var(--border);">
+          <label class="btn btn-secondary" style="display:block; text-align:center; width:100%;">
+            Upload Map Image
+            <input type="file" id="map-upload" accept="image/*">
+          </label>
+        </div>
+      </div>
+      <div class="map-area" id="map-area">
+        <div id="map-container">
+          <img id="map-img" src="faerunu_blank.jpg" style="display:none;">
+          <div id="map-placeholder"><p>No map loaded yet.</p>
+            <label>Upload Map Image<input type="file" accept="image/*" class="map-upload-alt"></label>
+          </div>
+        </div>
+        <div id="mode-indicator">📍 Click map to place pin</div>
+        <div class="editor-panel" id="editor-panel">
+          <h3 id="editor-title">New Pin</h3>
+          <label>Icon (emoji)</label><input type="text" id="edit-icon" value="📍" maxlength="10">
+          <label>Title</label><input type="text" id="edit-name" placeholder="e.g. Tower of Karsus" maxlength="200">
+          <label>Description</label><textarea id="edit-desc" placeholder="What do players see when they tap this pin?"></textarea>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="btn-save">Save</button>
+            <button class="btn btn-secondary" id="btn-cancel">Cancel</button>
+            <button class="btn btn-danger" id="btn-delete-editor" style="margin-left:auto;">Delete</button>
+          </div>
+        </div>
+        <div class="toolbar"><button class="btn btn-secondary" id="btn-refresh">↻ Refresh</button></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ==================== TAB SWITCHING ====================
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+      });
+    });
+
+    // ==================== SITES MANAGEMENT ====================
+    let sitesData = { thuls: [] };
+    let selectedSiteId = null;
+
+    async function fetchSites() {
+      const res = await fetch('/api/sites');
+      sitesData = await res.json();
+      renderSiteList();
+    }
+
+    function renderSiteList() {
+      const el = document.getElementById('site-list');
+      el.innerHTML = '';
+      sitesData.thuls.forEach(site => {
+        const item = document.createElement('div');
+        item.className = 'site-item' + (site.id === selectedSiteId ? ' selected' : '');
+        item.innerHTML = '<span class="site-glyph-icon">' + esc(site.glyph) + '</span>' +
+          '<div class="site-info"><div class="site-name">' + esc(site.name) + '</div>' +
+          '<div class="site-crystal">' + (site.crystal ? '🔮 ' + site.crystal : 'no crystal') + '</div></div>';
+        item.addEventListener('click', () => { selectedSiteId = site.id; renderSiteList(); renderSiteEditor(site); });
+        el.appendChild(item);
+      });
+    }
+
+    function renderSiteEditor(site) {
+      const ed = document.getElementById('site-editor');
+      ed.innerHTML = `
+        <h2>Edit: ${esc(site.name)}</h2>
+        <div class="field-row">
+          <div class="field"><label>Name</label><input id="se-name" value="${escAttr(site.name)}"></div>
+          <div class="field"><label>Glyph</label><input id="se-glyph" value="${escAttr(site.glyph)}" maxlength="10" style="width:80px;font-size:1.3rem;"></div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Crystal Color</label>
+            <select id="se-crystal">
+              <option value="">None</option>
+              <option value="green"${site.crystal==='green'?' selected':''}>Green</option>
+              <option value="blue"${site.crystal==='blue'?' selected':''}>Blue</option>
+              <option value="purple"${site.crystal==='purple'?' selected':''}>Purple</option>
+              <option value="red"${site.crystal==='red'?' selected':''}>Red</option>
+            </select>
+          </div>
+          <div class="field"><label>Map X%</label><input id="se-x" type="number" value="${site.x}" step="0.1"></div>
+          <div class="field"><label>Map Y%</label><input id="se-y" type="number" value="${site.y}" step="0.1"></div>
+        </div>
+        <div class="field"><label>Description</label><textarea id="se-desc">${esc(site.description||'')}</textarea></div>
+
+        <div class="pages-section">
+          <h3>📄 Pages <button class="btn btn-sm btn-secondary" onclick="addPageToSection('${site.id}','pages')">+ Add</button></h3>
+          <div id="se-pages"></div>
+        </div>
+        <div class="pages-section">
+          <h3>🔬 Research <button class="btn btn-sm btn-secondary" onclick="addPageToSection('${site.id}','research')">+ Add</button></h3>
+          <div id="se-research"></div>
+        </div>
+        <div class="pages-section">
+          <h3>👤 Personnel <button class="btn btn-sm btn-secondary" onclick="addPageToSection('${site.id}','personnel')">+ Add</button></h3>
+          <div id="se-personnel"></div>
+        </div>
+        <div style="margin-top:20px; display:flex; gap:8px;">
+          <button class="btn btn-primary" onclick="saveSite('${site.id}')">💾 Save Site</button>
+          <button class="btn btn-danger" onclick="deleteSite('${site.id}')" style="margin-left:auto;">🗑 Delete Site</button>
+        </div>
+      `;
+      renderPageCards('pages', site.pages || [], 'se-pages');
+      renderPageCards('research', site.research || [], 'se-research');
+      renderPageCards('personnel', site.personnel || [], 'se-personnel');
+    }
+
+    function renderPageCards(section, pages, containerId) {
+      const el = document.getElementById(containerId);
+      el.innerHTML = '';
+      pages.forEach((page, i) => {
+        const card = document.createElement('div');
+        card.className = 'page-card';
+        card.innerHTML = `
+          <div class="page-card-header">
+            <input class="pg-glyph" value="${escAttr(page.glyph||'')}" maxlength="10" style="width:50px;font-size:1.1rem;" placeholder="𒅆">
+            <input class="pg-title" value="${escAttr(page.title||'')}" placeholder="Page Title">
+            <button class="btn btn-danger btn-sm" onclick="this.closest('.page-card').remove()">✕</button>
+          </div>
+          <div class="field"><textarea class="pg-content" placeholder="Content shown to players...">${esc(page.content||'')}</textarea></div>
+        `;
+        el.appendChild(card);
+      });
+    }
+
+    function addPageToSection(siteId, section) {
+      const containerId = 'se-' + section;
+      const el = document.getElementById(containerId);
+      const card = document.createElement('div');
+      card.className = 'page-card';
+      card.innerHTML = `
+        <div class="page-card-header">
+          <input class="pg-glyph" value="" maxlength="10" style="width:50px;font-size:1.1rem;" placeholder="𒅆">
+          <input class="pg-title" value="" placeholder="Page Title">
+          <button class="btn btn-danger btn-sm" onclick="this.closest('.page-card').remove()">✕</button>
+        </div>
+        <div class="field"><textarea class="pg-content" placeholder="Content shown to players..."></textarea></div>
+      `;
+      el.appendChild(card);
+    }
+
+    function collectPages(containerId) {
+      const cards = document.getElementById(containerId).querySelectorAll('.page-card');
+      return Array.from(cards).map(card => ({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2,5),
+        glyph: card.querySelector('.pg-glyph').value.trim(),
+        title: card.querySelector('.pg-title').value.trim(),
+        content: card.querySelector('.pg-content').value.trim(),
+      })).filter(p => p.title);
+    }
+
+    async function saveSite(siteId) {
+      const data = {
+        name: document.getElementById('se-name').value.trim(),
+        glyph: document.getElementById('se-glyph').value.trim(),
+        crystal: document.getElementById('se-crystal').value || undefined,
+        x: parseFloat(document.getElementById('se-x').value),
+        y: parseFloat(document.getElementById('se-y').value),
+        description: document.getElementById('se-desc').value.trim(),
+        pages: collectPages('se-pages'),
+        research: collectPages('se-research'),
+        personnel: collectPages('se-personnel'),
+      };
+      await fetch('/api/sites/' + encodeURIComponent(siteId), {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data),
+      });
+      await fetchSites();
+      const updated = sitesData.thuls.find(s => s.id === siteId);
+      if (updated) renderSiteEditor(updated);
+    }
+
+    async function deleteSite(siteId) {
+      const site = sitesData.thuls.find(s => s.id === siteId);
+      if (!confirm('Delete "' + (site?.name||siteId) + '"?')) return;
+      await fetch('/api/sites/' + encodeURIComponent(siteId), { method: 'DELETE' });
+      selectedSiteId = null;
+      document.getElementById('site-editor').innerHTML = '<p style="color:var(--muted);padding:40px;text-align:center;">Site deleted.</p>';
+      fetchSites();
+    }
+
+    document.getElementById('btn-add-site').addEventListener('click', async () => {
+      const res = await fetch('/api/sites', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: 'New Thul Site', glyph: '𒀭' }),
+      });
+      const site = await res.json();
+      selectedSiteId = site.id;
+      await fetchSites();
+      renderSiteEditor(site);
+    });
+
+    // ==================== PINS MANAGEMENT ====================
+    let pins = [];
+    let selectedPinId = null;
+    let placingMode = false;
+    let editingPinId = null;
+    let pendingPin = null;
+
+    const mapImg = document.getElementById('map-img');
+    const mapContainer = document.getElementById('map-container');
+    const mapPlaceholder = document.getElementById('map-placeholder');
+    const editorPanel = document.getElementById('editor-panel');
+    const modeIndicator = document.getElementById('mode-indicator');
+
+    async function fetchPins() { const r = await fetch('/api/pins'); pins = await r.json(); renderPinList(); renderMapPins(); }
+    async function createPin(pin) { return (await fetch('/api/pins', { method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(pin) })).json(); }
+    async function updatePin(id, data) { return (await fetch('/api/pins/'+encodeURIComponent(id), { method:'PUT', headers:{'Content-Type':'application/json'}, body:JSON.stringify(data) })).json(); }
+    async function deletePin(id) { await fetch('/api/pins/'+encodeURIComponent(id), { method:'DELETE' }); }
+
+    async function uploadMap(file) {
+      const buf = await file.arrayBuffer();
+      await fetch('/api/map-upload', { method:'POST', headers:{'Content-Type':'application/octet-stream'}, body:buf });
+      loadMap();
+    }
+
+    function loadMap() {
+      const img = new Image();
+      img.onload = () => { mapImg.src=img.src; mapImg.style.display='block'; mapPlaceholder.style.display='none'; };
+      img.onerror = () => { mapImg.style.display='none'; mapPlaceholder.style.display='block'; };
+      img.src = 'faerunu_blank.jpg?' + Date.now();
+    }
+
+    function renderPinList() {
+      const el = document.getElementById('pin-list');
+      el.innerHTML = '';
+      pins.forEach(pin => {
+        const item = document.createElement('div');
+        item.className = 'pin-item' + (pin.id===selectedPinId?' selected':'');
+        item.innerHTML = '<span class="pin-icon">'+esc(pin.icon)+'</span><div class="pin-info"><div class="pin-title">'+esc(pin.title)+'</div><div class="pin-coords">('+pin.x.toFixed(1)+'%, '+pin.y.toFixed(1)+'%)</div></div><button class="pin-delete" title="Delete">✕</button>';
+        item.addEventListener('click', (e) => { if(e.target.classList.contains('pin-delete')) return; selectPin(pin.id); });
+        item.querySelector('.pin-delete').addEventListener('click', async () => { if(!confirm('Delete "'+pin.title+'"?')) return; await deletePin(pin.id); if(selectedPinId===pin.id){selectedPinId=null;closeEditor();} fetchPins(); });
+        el.appendChild(item);
+      });
+    }
+
+    function renderMapPins() {
+      mapContainer.querySelectorAll('.map-pin').forEach(el=>el.remove());
+      pins.forEach(pin => {
+        const el = document.createElement('div');
+        el.className = 'map-pin'+(pin.id===selectedPinId?' selected':'');
+        el.textContent = pin.icon; el.style.left=pin.x+'%'; el.style.top=pin.y+'%';
+        el.addEventListener('click', (e) => { e.stopPropagation(); selectPin(pin.id); });
+        mapContainer.appendChild(el);
+      });
+    }
+
+    function selectPin(id) { selectedPinId=id; const pin=pins.find(p=>p.id===id); if(!pin) return; renderPinList(); renderMapPins(); openEditor(pin); }
+
+    function openEditor(pin) {
+      editingPinId = pin?pin.id:null;
+      document.getElementById('editor-title').textContent = pin?'Edit Pin':'New Pin';
+      document.getElementById('edit-icon').value = pin?pin.icon:'📍';
+      document.getElementById('edit-name').value = pin?pin.title:'';
+      document.getElementById('edit-desc').value = pin?pin.description:'';
+      document.getElementById('btn-delete-editor').style.display = pin?'':'none';
+      editorPanel.classList.add('open');
+    }
+
+    function closeEditor() { editorPanel.classList.remove('open'); editingPinId=null; placingMode=false; modeIndicator.classList.remove('active'); }
+
+    mapContainer.addEventListener('click', (e) => {
+      if(!placingMode) return;
+      const rect=mapImg.getBoundingClientRect();
+      const x=((e.clientX-rect.left)/rect.width)*100, y=((e.clientY-rect.top)/rect.height)*100;
+      if(x<0||x>100||y<0||y>100) return;
+      pendingPin={x,y}; placingMode=false; modeIndicator.classList.remove('active');
+      openEditor(null); document.getElementById('edit-name').focus();
+    });
+
+    document.getElementById('btn-add-pin').addEventListener('click', () => {
+      if(mapImg.style.display==='none') { alert('Upload a map image first.'); return; }
+      placingMode=true; modeIndicator.classList.add('active'); closeEditor(); selectedPinId=null; renderPinList(); renderMapPins();
+    });
+
+    document.getElementById('btn-save').addEventListener('click', async () => {
+      const title=document.getElementById('edit-name').value.trim();
+      const description=document.getElementById('edit-desc').value.trim();
+      const icon=document.getElementById('edit-icon').value.trim()||'📍';
+      if(!title) { alert('Title is required.'); return; }
+      if(editingPinId) { await updatePin(editingPinId, {title,description,icon}); }
+      else if(pendingPin) { await createPin({title,description,icon,x:pendingPin.x,y:pendingPin.y}); pendingPin=null; }
+      else { alert('Click the map to place the pin first.'); return; }
+      closeEditor(); fetchPins();
+    });
+
+    document.getElementById('btn-cancel').addEventListener('click', () => { pendingPin=null; closeEditor(); });
+    document.getElementById('btn-delete-editor').addEventListener('click', async () => {
+      if(!editingPinId) return; const pin=pins.find(p=>p.id===editingPinId);
+      if(!confirm('Delete "'+pin?.title+'"?')) return;
+      await deletePin(editingPinId); selectedPinId=null; closeEditor(); fetchPins();
+    });
+    document.getElementById('btn-refresh').addEventListener('click', fetchPins);
+    document.getElementById('map-upload').addEventListener('change', (e) => { if(e.target.files[0]) uploadMap(e.target.files[0]); });
+    document.querySelector('.map-upload-alt')?.addEventListener('change', (e) => { if(e.target.files[0]) uploadMap(e.target.files[0]); });
+
+    // ==================== CRYSTALS MANAGEMENT ====================
+    let crystals = [];
+    let selectedCrystalHex = null;
+    let lastScannedHex = null;
+
+    const COLOR_HEX_MAP = { blue:'#2196F3', purple:'#9C27B0', green:'#4CAF50', red:'#F44336', yellow:'#FFEB3B', white:'#EEEEEE', orange:'#FF9800', pink:'#E91E63', cyan:'#00BCD4' };
+
+    // WebSocket to listen for scanned crystals
+    const gmWs = new WebSocket('ws://' + location.hostname + ':3000');
+    gmWs.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      if (data.type === 'crystal') {
+        lastScannedHex = data.tagHex.toUpperCase();
+        document.getElementById('last-scan-hex').textContent = '0x' + lastScannedHex + ' (' + data.color + ')';
+        if (waitingForScan && scanResolver) {
+          scanResolver(lastScannedHex);
+        }
+      }
+    };
+    gmWs.onclose = () => { document.getElementById('last-scan-hex').textContent = '(disconnected)'; };
+
+    async function fetchCrystals() {
+      const res = await fetch('/api/crystals');
+      crystals = await res.json();
+      renderCrystalList();
+    }
+
+    function renderCrystalList() {
+      const el = document.getElementById('crystal-list');
+      el.innerHTML = '';
+      crystals.forEach(c => {
+        const item = document.createElement('div');
+        item.className = 'crystal-item' + (c.hex === selectedCrystalHex ? ' selected' : '');
+        const swatchColor = COLOR_HEX_MAP[c.color] || '#888';
+        item.innerHTML = '<div class="crystal-swatch" style="background:' + swatchColor + ';"></div>' +
+          '<div class="crystal-info"><div class="crystal-color-name">' + esc(c.color) + '</div>' +
+          '<div class="crystal-hex">0x' + esc(c.hex) + '</div></div>';
+        item.addEventListener('click', () => { selectedCrystalHex = c.hex; renderCrystalList(); renderCrystalEditor(c); });
+        el.appendChild(item);
+      });
+    }
+
+    function renderCrystalEditor(c) {
+      const ed = document.getElementById('crystal-editor');
+      const answerHtml = (c.answer || []).map((v, i) =>
+        '<input class="ce-answer-val" type="number" min="0" max="24" value="' + v + '">'
+      ).join('');
+      ed.innerHTML = `
+        <h2>Edit Crystal: <span style="text-transform:capitalize">${esc(c.color)}</span></h2>
+        <div class="field-row">
+          <div class="field"><label>RFID Hex Code</label><input id="ce-hex" value="${escAttr(c.hex)}" style="font-family:monospace;"></div>
+          <div class="field"><label>Color</label>
+            <select id="ce-color">
+              <option value="blue"${c.color==='blue'?' selected':''}>Blue</option>
+              <option value="purple"${c.color==='purple'?' selected':''}>Purple</option>
+              <option value="green"${c.color==='green'?' selected':''}>Green</option>
+              <option value="red"${c.color==='red'?' selected':''}>Red</option>
+              <option value="yellow"${c.color==='yellow'?' selected':''}>Yellow</option>
+              <option value="white"${c.color==='white'?' selected':''}>White</option>
+              <option value="orange"${c.color==='orange'?' selected':''}>Orange</option>
+              <option value="pink"${c.color==='pink'?' selected':''}>Pink</option>
+              <option value="cyan"${c.color==='cyan'?' selected':''}>Cyan</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Name (cuneiform/text)</label><input id="ce-name" value="${escAttr(c.name)}" style="font-size:1.2rem;"></div>
+          <div class="field"><label>Glyph Start (hex)</label><input id="ce-glyphStart" value="0x${typeof c.glyphStart==='number'?c.glyphStart.toString(16).toUpperCase():c.glyphStart}" style="font-family:monospace;"></div>
+        </div>
+        <div class="field">
+          <label>Answer Sequence (grid indices 0–24)</label>
+          <div class="answer-grid" id="ce-answer">${answerHtml}</div>
+          <div style="margin-top:6px; display:flex; gap:8px;">
+            <button class="btn btn-sm btn-secondary" onclick="addAnswerSlot()">+ Add Slot</button>
+            <button class="btn btn-sm btn-secondary" onclick="removeAnswerSlot()">− Remove Slot</button>
+          </div>
+        </div>
+        <div style="margin-top:20px; display:flex; gap:8px;">
+          <button class="btn btn-primary" onclick="saveCrystal('${escAttr(c.hex)}')">💾 Save Crystal</button>
+          <button class="btn btn-danger" onclick="deleteCrystal('${escAttr(c.hex)}')" style="margin-left:auto;">🗑 Delete Crystal</button>
+        </div>
+      `;
+    }
+
+    function addAnswerSlot() {
+      const grid = document.getElementById('ce-answer');
+      if (!grid) return;
+      const inp = document.createElement('input');
+      inp.className = 'ce-answer-val'; inp.type = 'number'; inp.min = 0; inp.max = 24; inp.value = 0;
+      grid.appendChild(inp);
+    }
+
+    function removeAnswerSlot() {
+      const grid = document.getElementById('ce-answer');
+      if (!grid) return;
+      const inputs = grid.querySelectorAll('.ce-answer-val');
+      if (inputs.length > 1) inputs[inputs.length - 1].remove();
+    }
+
+    function collectAnswer() {
+      return Array.from(document.querySelectorAll('#ce-answer .ce-answer-val')).map(el => parseInt(el.value, 10) || 0);
+    }
+
+    async function saveCrystal(origHex) {
+      const newHex = document.getElementById('ce-hex').value.trim().toUpperCase().replace(/^0X/, '');
+      const color = document.getElementById('ce-color').value;
+      const name = document.getElementById('ce-name').value.trim();
+      const glyphStartStr = document.getElementById('ce-glyphStart').value.trim();
+      const glyphStart = parseInt(glyphStartStr, 16) || 0x12000;
+      const answer = collectAnswer();
+      // If hex changed, delete old and create new
+      if (newHex !== origHex.toUpperCase().replace(/^0X/, '')) {
+        await fetch('/api/crystals/' + encodeURIComponent(origHex), { method: 'DELETE' });
+        await fetch('/api/crystals', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hex: newHex, color, name, glyphStart, answer }),
+        });
+        selectedCrystalHex = newHex;
+      } else {
+        await fetch('/api/crystals/' + encodeURIComponent(origHex), {
+          method: 'PUT', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ color, name, glyphStart, answer }),
+        });
+      }
+      await fetchCrystals();
+      const updated = crystals.find(c => c.hex.toUpperCase().replace(/^0X/, '') === newHex);
+      if (updated) renderCrystalEditor(updated);
+    }
+
+    async function deleteCrystal(hex) {
+      const c = crystals.find(cr => cr.hex === hex);
+      if (!confirm('Delete crystal "' + (c?.color || hex) + '"?')) return;
+      await fetch('/api/crystals/' + encodeURIComponent(hex), { method: 'DELETE' });
+      selectedCrystalHex = null;
+      document.getElementById('crystal-editor').innerHTML = '<p style="color:var(--muted);padding:40px;text-align:center;">Crystal deleted.</p>';
+      fetchCrystals();
+    }
+
+    let waitingForScan = false;
+    let scanResolver = null;
+
+    document.getElementById('btn-add-crystal').addEventListener('click', async () => {
+      const ed = document.getElementById('crystal-editor');
+      const btn = document.getElementById('btn-add-crystal');
+
+      // Show waiting state
+      waitingForScan = true;
+      btn.textContent = '⏳ Scanning…';
+      btn.disabled = true;
+      ed.innerHTML = '<div style="text-align:center; padding:80px 40px;">' +
+        '<div style="font-size:3rem; margin-bottom:16px;">🔮</div>' +
+        '<div style="font-size:1.1rem; color:var(--gold); margin-bottom:8px;">Place a crystal on the reader…</div>' +
+        '<div style="color:var(--muted); font-size:0.85rem;">Waiting for RFID scan</div>' +
+        '<button class="btn btn-secondary" id="btn-cancel-scan" style="margin-top:24px;">Cancel</button>' +
+        '</div>';
+
+      document.getElementById('btn-cancel-scan').addEventListener('click', () => {
+        waitingForScan = false;
+        btn.textContent = '+ Add Crystal';
+        btn.disabled = false;
+        if (scanResolver) { scanResolver(null); scanResolver = null; }
+        ed.innerHTML = '<p style="color:var(--muted);padding:40px;text-align:center;">Scan cancelled.</p>';
+      });
+
+      // Wait for next scan
+      const hex = await new Promise(resolve => { scanResolver = resolve; });
+      waitingForScan = false;
+      btn.textContent = '+ Add Crystal';
+      btn.disabled = false;
+      scanResolver = null;
+
+      if (!hex) return;
+
+      const cleanHex = hex.replace(/^0x/i, '').toUpperCase();
+      // Check if already exists
+      const existing = crystals.find(c => c.hex.toUpperCase().replace(/^0X/, '') === cleanHex);
+      if (existing) {
+        selectedCrystalHex = existing.hex;
+        renderCrystalList();
+        renderCrystalEditor(existing);
+        return;
+      }
+      const res = await fetch('/api/crystals', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hex: cleanHex, color: 'blue', name: '', glyphStart: 0x12000, answer: [0,1,2,3,4,5,6,7] }),
+      });
+      const crystal = await res.json();
+      selectedCrystalHex = crystal.hex;
+      await fetchCrystals();
+      renderCrystalEditor(crystal);
+    });
+
+    // ==================== HELPERS ====================
+    function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+    function escAttr(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+    // ==================== INIT ====================
+    loadMap();
+    fetchPins();
+    fetchSites();
+    fetchCrystals();
+  </script>
+</body>
+</html>

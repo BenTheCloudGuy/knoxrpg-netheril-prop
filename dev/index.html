@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Netheril — Hardware Simulator</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root { --bg: #1a1a2e; --surface: #16213e; --border: #0f3460; --accent: #e94560; --text: #eee; --muted: #888; --gold: #c4a55a; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; padding: 24px; }
+    h1 { color: var(--gold); margin-bottom: 8px; font-size: 1.4rem; }
+    .subtitle { color: var(--muted); font-size: 0.85rem; margin-bottom: 24px; }
+    .panel { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+    .panel h2 { font-size: 1rem; color: var(--gold); margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+    .status { display: inline-block; width: 10px; height: 10px; border-radius: 50%; }
+    .status.on { background: #4CAF50; box-shadow: 0 0 8px rgba(76,175,80,0.5); }
+    .status.off { background: #666; }
+    .btn { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: 600; transition: opacity 0.15s; }
+    .btn:hover { opacity: 0.85; }
+    .btn:active { transform: scale(0.97); }
+    .btn-insert { background: #4CAF50; color: #fff; }
+    .btn-remove { background: var(--accent); color: #fff; }
+    .btn-hand-on { background: #2196F3; color: #fff; }
+    .btn-hand-off { background: #FF9800; color: #fff; }
+    .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
+    .crystal-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+    .crystal-btn { padding: 12px 20px; border: 2px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); cursor: pointer; font-size: 0.85rem; text-align: center; min-width: 100px; transition: all 0.2s; }
+    .crystal-btn:hover { border-color: var(--gold); }
+    .crystal-btn.active { border-color: var(--accent); background: rgba(233,69,96,0.15); }
+    .crystal-swatch { width: 24px; height: 24px; border-radius: 50%; margin: 0 auto 6px; border: 2px solid rgba(255,255,255,0.15); }
+    .hand-controls { display: flex; gap: 12px; margin-top: 12px; }
+    .state-row { display: flex; gap: 24px; margin-top: 12px; font-size: 0.9rem; }
+    .state-row span { color: var(--muted); }
+    .state-row strong { color: var(--text); }
+    .log { background: #111; border: 1px solid var(--border); border-radius: 6px; padding: 12px; font-family: monospace; font-size: 0.8rem; max-height: 200px; overflow-y: auto; margin-top: 12px; color: #aaa; }
+    .log div { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
+    .log .ev-crystal { color: #4CAF50; }
+    .log .ev-removed { color: var(--accent); }
+    .log .ev-hand-on { color: #2196F3; }
+    .log .ev-hand-off { color: #FF9800; }
+    .links { margin-top: 16px; font-size: 0.85rem; }
+    .links a { color: var(--gold); text-decoration: none; margin-right: 16px; }
+    .links a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1>🔧 Hardware Simulator</h1>
+  <div class="subtitle">Simulates RFID crystal reader and Kano motion sensor — no hardware required</div>
+
+  <div class="panel">
+    <h2>🔮 Crystal (RFID) <span class="status" id="crystal-status"></span></h2>
+    <div class="state-row">
+      <span>Current: <strong id="current-crystal">None</strong></span>
+    </div>
+    <div class="crystal-grid" id="crystal-grid"></div>
+    <div style="margin-top: 14px;">
+      <button class="btn btn-remove" onclick="removeCrystal()">Remove Crystal</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>🖐️ Hand Sensor (Kano) <span class="status" id="hand-status"></span></h2>
+    <div class="hand-controls">
+      <button class="btn btn-hand-on" onclick="handOn()">Hand ON (cover sensor)</button>
+      <button class="btn btn-hand-off" onclick="handOff()">Hand OFF (remove hand)</button>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>📋 Event Log</h2>
+    <div class="log" id="log"></div>
+  </div>
+
+  <div class="links">
+    <a href="http://localhost:3000" target="_blank">Player Interface (port 3000)</a>
+    <a href="/" target="_blank">GM Console (port 3001)</a>
+  </div>
+
+  <script>
+    const COLOR_MAP = { blue:'#2196F3', purple:'#9C27B0', green:'#4CAF50', red:'#F44336', yellow:'#FFEB3B', white:'#EEE', orange:'#FF9800', pink:'#E91E63', cyan:'#00BCD4' };
+    let activeCrystalHex = null;
+
+    async function api(endpoint, body) {
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      return res.json();
+    }
+
+    function log(msg, cls) {
+      const el = document.getElementById('log');
+      const d = document.createElement('div');
+      if (cls) d.className = cls;
+      d.textContent = new Date().toLocaleTimeString() + ' — ' + msg;
+      el.prepend(d);
+      if (el.children.length > 100) el.lastChild.remove();
+    }
+
+    async function insertCrystal(hex, color) {
+      await api('/api/sim/crystal', { hex });
+      activeCrystalHex = hex;
+      log('Crystal inserted: ' + color + ' (0x' + hex + ')', 'ev-crystal');
+      refreshStatus();
+    }
+
+    async function removeCrystal() {
+      await api('/api/sim/crystal-remove');
+      activeCrystalHex = null;
+      log('Crystal removed', 'ev-removed');
+      refreshStatus();
+    }
+
+    async function handOn() {
+      await api('/api/sim/hand-on');
+      log('Hand ON', 'ev-hand-on');
+      refreshStatus();
+    }
+
+    async function handOff() {
+      await api('/api/sim/hand-off');
+      log('Hand OFF', 'ev-hand-off');
+      refreshStatus();
+    }
+
+    async function refreshStatus() {
+      const data = await (await fetch('/api/sim/status')).json();
+      document.getElementById('crystal-status').className = 'status ' + (data.crystalActive ? 'on' : 'off');
+      document.getElementById('hand-status').className = 'status ' + (data.handOn ? 'on' : 'off');
+      document.getElementById('current-crystal').textContent = data.currentCrystal ? '0x' + data.currentCrystal : 'None';
+      activeCrystalHex = data.currentCrystal;
+
+      // Build crystal buttons
+      const grid = document.getElementById('crystal-grid');
+      grid.innerHTML = '';
+      data.crystals.forEach(c => {
+        const btn = document.createElement('div');
+        btn.className = 'crystal-btn' + (activeCrystalHex === c.hex.toUpperCase() ? ' active' : '');
+        const sw = COLOR_MAP[c.color] || '#888';
+        btn.innerHTML = '<div class="crystal-swatch" style="background:' + sw + '"></div>' + c.color + '<br><small style="color:#888">0x' + c.hex + '</small>';
+        btn.onclick = () => insertCrystal(c.hex, c.color);
+        grid.appendChild(btn);
+      });
+    }
+
+    // Listen for real-time events via WebSocket
+    const ws = new WebSocket('ws://localhost:3000');
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      if (data.type === 'crystal') log('WS: crystal ' + data.color, 'ev-crystal');
+      else if (data.type === 'removed') log('WS: crystal removed', 'ev-removed');
+      else if (data.type === 'hand-on') log('WS: hand-on', 'ev-hand-on');
+      else if (data.type === 'hand-off') log('WS: hand-off', 'ev-hand-off');
+      setTimeout(refreshStatus, 100);
+    };
+
+    refreshStatus();
+  </script>
+</body>
+</html>

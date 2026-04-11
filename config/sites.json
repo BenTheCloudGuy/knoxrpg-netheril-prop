@@ -1,0 +1,126 @@
+{
+  "thuls": [
+    {
+      "id": "thul-avenar",
+      "name": "Thul Avenar",
+      "glyph": "𒀭",
+      "description": "The main assembly site. This is where the work from the other Thul sites was brought together and the Great Machine was built.",
+      "x": 35.5,
+      "y": 28.2,
+      "pages": [
+        {
+          "id": "mntmpbiizzx",
+          "glyph": "𒅆",
+          "title": "Overview",
+          "content": "Thul Avenar — The Heart of the Great Work\n\nThul Avenar served as the central nexus where all research from the outlying Thul sites converged. Here, the greatest arcanists of Netheril assembled the components of the Great Machine — an artifact of staggering ambition designed to reshape the very fabric of magical law.\n\nThe site itself occupies a vast underground complex, its halls lined with crystalline conduits that once pulsed with raw mythic energy."
+        }
+      ],
+      "crystal": "blue",
+      "research": [],
+      "personnel": []
+    },
+    {
+      "id": "thul-vharak",
+      "name": "Thul Vharak",
+      "glyph": "𒃲",
+      "description": "The mountain shielding site beneath Mount Ghakis / the Amber Temple complex. The place for arcane shields, warding, containment, and defensive latticework.",
+      "x": 72.8,
+      "y": 32.5,
+      "crystal": "green",
+      "pages": [
+        {
+          "id": "overview",
+          "glyph": "𒅆",
+          "title": "Overview",
+          "content": "Thul Vharak — The Warden's Bastion\n\nBuried deep beneath Mount Ghakis, below the Amber Temple, Thul Vharak was Netheril's primary research facility for shielding and protective magic. Its arcanists specialized in ward-craft, containment lattices, and defensive enchantments capable of withstanding even divine-level assault.\n\nThe facility's position was chosen deliberately — the natural ley-line convergence beneath the mountain amplified protective enchantments tenfold."
+        }
+      ],
+      "research": [
+        {
+          "id": "shielding",
+          "glyph": "𒁴",
+          "title": "Shielding Research",
+          "content": "Primary Research: Arcane Shielding & Protection\n\nThul Vharak's researchers developed ward-lattices capable of deflecting mythic-level energy. Their work formed the defensive backbone of the Great Machine.\n\nKey breakthroughs:\n• Crystalline Shield Matrix — A lattice of interlocking ward-stones\n• Vharak's Bulwark — A 10th-level shielding spell (now lost)\n• Amber Containment Protocol — Used to seal dangerous extraplanar entities"
+        }
+      ],
+      "personnel": [
+        {
+          "id": "staff",
+          "glyph": "𒇽",
+          "title": "Personnel Records",
+          "content": "Thul Vharak Personnel Registry\n\nFacility Director: Archmage Luvran the Shielded\n — Master of Wards, 3rd Circle of Netherese High Magic\n\nHead Researcher: Tessara of the Amber Eye\n — Specialist in Planar Containment\n\nChief Artificer: Grundahl Ironweave\n — Construct maintenance and ward-stone fabrication\n\nSenior Arcanist: Phaedra Sunless\n — Ley-line mapping and energy routing\n\nGuard Captain: Varek Stonehelm\n — Commander of the Vharak Sentinels"
+        }
+      ]
+    },
+    {
+      "id": "thul-seyr",
+      "name": "Thul Seyr",
+      "glyph": "𒊑",
+      "description": "The veil-piercing site. This was where they studied passage between worlds, planes, realms, and even time.",
+      "x": 48.3,
+      "y": 44.1,
+      "pages": [
+        {
+          "id": "mntmpgnphhl",
+          "glyph": "𒅆",
+          "title": "Overview",
+          "content": "Thul Seyr — The Veil-Piercer\n\nThul Seyr was Netheril's most secretive facility, dedicated to the study of planar boundaries, temporal mechanics, and reality manipulation. Its researchers could open portals to other planes and — some whispered — other times entirely.\n\nThe facility exists in a state of partial phase-shift, portions of its structure flickering between the Material Plane and the Border Ethereal."
+        }
+      ],
+      "crystal": "purple",
+      "research": [],
+      "personnel": []
+    },
+    {
+      "id": "thul-mystren",
+      "name": "Thul Mystren",
+      "glyph": "𒂵",
+      "description": "The crystal and power-routing site. Tied to mythallar crystals and channeling power from mythallars into smaller systems.",
+      "x": 30.1,
+      "y": 52.7,
+      "pages": [
+        {
+          "id": "mntmpl94wmq",
+          "glyph": "𒅆",
+          "title": "Overview",
+          "content": "Thul Mystren — The Crystal Nexus\n\nThul Mystren was dedicated to the study of illusion magic and the arcane properties of mythallar crystals — what later ages would call Ioun Stones. Its researchers worked on channeling raw mythic power through crystalline matrices to fuel enchantments across vast distances."
+        }
+      ],
+      "crystal": "red",
+      "research": [],
+      "personnel": []
+    },
+    {
+      "id": "thul-karath",
+      "name": "Thul Karath",
+      "glyph": "𒆕",
+      "description": "The construct site. Automatons, command lattices, crystal memory, and construct cores.",
+      "x": 55.9,
+      "y": 19.3,
+      "pages": [
+        {
+          "id": "overview",
+          "glyph": "𒅆",
+          "title": "Overview",
+          "content": "Thul Karath — The Forge of Minds\n\nThul Karath specialized in the creation of magical constructs, arcane automatons, and crystal-based memory systems. Its artificers could imbue non-living matter with a semblance of intelligence through carefully inscribed command lattices."
+        }
+      ]
+    },
+    {
+      "id": "thul-oraph",
+      "name": "Thul Oraph",
+      "glyph": "𒉣",
+      "description": "The observation site. Long-range divination, remote sensing, and locating fixed points across realms.",
+      "x": 62.4,
+      "y": 58.6,
+      "pages": [
+        {
+          "id": "overview",
+          "glyph": "𒅆",
+          "title": "Overview",
+          "content": "Thul Oraph — The Far-Seeing Eye\n\nThul Oraph was Netheril's premier divination facility. Its purpose was to map the planes, locate fixed points in reality, and provide the other Thul sites with targeting data for their experiments. The arcanists of Oraph could observe events across continents and even peer into other planes of existence."
+        }
+      ]
+    }
+  ]
+}

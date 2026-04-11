@@ -1,0 +1,16 @@
+{
+  "name": "Netheril Prop Dev",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:20",
+  "forwardPorts": [3000, 3001],
+  "containerEnv": {
+    "SIM_MODE": "true"
+  },
+  "postCreateCommand": "npm install",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "dbaeumer.vscode-eslint"
+      ]
+    }
+  }
+}

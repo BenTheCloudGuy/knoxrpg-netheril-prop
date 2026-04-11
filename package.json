@@ -1,0 +1,18 @@
+{
+  "name": "netheril-app",
+  "version": "1.0.0",
+  "description": "Netheril Prop — Interactive ancient puzzle interface with RFID crystal detection",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "sudo node src/server.js"
+  },
+  "dependencies": {
+    "@serialport/parser-readline": "^13.0.0",
+    "dotenv": "^17.3.1",
+    "express": "^4.21.0",
+    "js-yaml": "^4.1.1",
+    "rpi-ws281x": "^1.0.1",
+    "serialport": "^12.0.0",
+    "ws": "^8.18.0"
+  }
+}

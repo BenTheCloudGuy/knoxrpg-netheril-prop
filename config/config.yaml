@@ -1,0 +1,79 @@
+crystals:
+  00000C0E:
+    color: blue
+    name: ሇ2ሰBላ5
+    glyphStart: 73728
+    answer:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+  00000C07:
+    color: purple
+    name: ሇ4ሀ0ሱ3
+    glyphStart: 73856
+    answer:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+  00000C04:
+    color: green
+    name: ሑ1ሱDሂD
+    glyphStart: 73984
+    answer:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+  00000C09:
+    color: red
+    name: ሩ1ሃ8ሱ1
+    glyphStart: 74112
+    answer:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+  11000C03:
+    color: yellow
+    name: ሀ0ሴ5ሆ7
+    glyphStart: 73728
+    answer:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
+  11000C00:
+    color: white
+    name: ''
+    glyphStart: 73728
+    answer:
+      - 0
+      - 1
+      - 2
+      - 3
+      - 4
+      - 5
+      - 6
+      - 7
