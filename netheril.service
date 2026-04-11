@@ -1,6 +1,7 @@
 [Unit]
 Description=Netheril Prop Server
 After=network.target
+Wants=netheril-kiosk.service
 
 [Service]
 Type=simple
