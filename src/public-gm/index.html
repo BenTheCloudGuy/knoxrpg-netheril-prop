@@ -141,6 +141,7 @@
     <div class="tab" data-tab="crystals">🔮 Crystals</div>
     <div class="tab" data-tab="pins">📌 Map Pins</div>
     <div class="tab" data-tab="update" style="margin-left:auto;">🔄 Update</div>
+    <div class="tab" data-tab="logs">📋 Logs</div>
   </div>
 
   <!-- ==================== SITES TAB ==================== -->
@@ -229,6 +230,21 @@
       <div id="update-terminal" style="flex:1; background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:16px; overflow-y:auto; font-family:'Courier New',monospace; font-size:0.85rem; line-height:1.6; color:#ccc;">
         <div style="color:var(--muted);">Click "Pull Latest" to run <code>git pull</code> + <code>npm install</code>.</div>
       </div>
+    </div>
+  </div>
+
+  <!-- ==================== LOGS TAB ==================== -->
+  <div class="tab-content" id="tab-logs">
+    <div style="width:100%; padding:24px; display:flex; flex-direction:column; height:calc(100vh - 94px);">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+        <h2 style="font-size:1.1rem; color:var(--gold);">Live Service Logs</h2>
+        <span id="logs-status" style="font-size:0.8rem; color:var(--muted);">Connecting...</span>
+        <button class="btn btn-sm btn-secondary" id="btn-logs-clear">Clear</button>
+        <label style="font-size:0.8rem; color:var(--muted); display:flex; align-items:center; gap:4px; margin-left:auto;">
+          <input type="checkbox" id="logs-autoscroll" checked> Auto-scroll
+        </label>
+      </div>
+      <div id="logs-terminal" style="flex:1; background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:16px; overflow-y:auto; font-family:'Courier New',monospace; font-size:0.8rem; line-height:1.5; color:#ccc; white-space:pre-wrap; word-break:break-all;"></div>
     </div>
   </div>
 
@@ -755,6 +771,60 @@
         appendLine('Restart request sent. Reconnecting...', 'info');
         setTimeout(() => location.reload(), 5000);
       }
+    });
+
+    // ==================== LIVE LOGS ====================
+    const logsTerminal = document.getElementById('logs-terminal');
+    const logsStatus = document.getElementById('logs-status');
+    const logsAutoscroll = document.getElementById('logs-autoscroll');
+    let logsSource = null;
+
+    function connectLogs() {
+      if (logsSource) { logsSource.close(); }
+      logsStatus.textContent = 'Connecting...';
+      logsStatus.style.color = 'var(--muted)';
+
+      logsSource = new EventSource('/api/logs');
+
+      logsSource.onopen = () => {
+        logsStatus.textContent = '● Live';
+        logsStatus.style.color = '#4CAF50';
+      };
+
+      logsSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        const line = document.createElement('div');
+        line.textContent = data.text;
+        if (data.err) line.style.color = '#e94560';
+        // Highlight key events
+        if (data.text.includes('Hand ON')) line.style.color = '#4CAF50';
+        else if (data.text.includes('Hand OFF')) line.style.color = '#FF9800';
+        else if (data.text.includes('Crystal:')) line.style.color = '#c4a55a';
+        else if (data.text.includes('Crystal removed')) line.style.color = '#FF9800';
+        logsTerminal.appendChild(line);
+        // Cap at 500 lines
+        while (logsTerminal.childNodes.length > 500) logsTerminal.removeChild(logsTerminal.firstChild);
+        if (logsAutoscroll.checked) logsTerminal.scrollTop = logsTerminal.scrollHeight;
+      };
+
+      logsSource.onerror = () => {
+        logsStatus.textContent = '● Disconnected';
+        logsStatus.style.color = '#e94560';
+        logsSource.close();
+        logsSource = null;
+        setTimeout(connectLogs, 3000);
+      };
+    }
+
+    document.getElementById('btn-logs-clear').addEventListener('click', () => {
+      logsTerminal.innerHTML = '';
+    });
+
+    // Connect logs when the Logs tab is activated
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        if (tab.dataset.tab === 'logs' && !logsSource) connectLogs();
+      });
     });
 
     // ==================== INIT ====================

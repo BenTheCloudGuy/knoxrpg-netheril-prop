@@ -24,8 +24,9 @@ const SERIAL_PATH = '/dev/serial0';
 const SERIAL_BAUD = 9600;
 const MOTION_SERIAL_PATH = process.env.MOTION_PORT || '/dev/ttyACM0';
 const MOTION_BAUD = 115200;
-const HAND_THRESHOLD = 20;    // proximity value below which hand is "on" (covering sensor)
-const HAND_TIMEOUT = 600;     // ms of high readings before hand-off
+const HAND_ON_THRESHOLD = 240;   // proximity must rise above this to trigger hand-on
+const HAND_OFF_THRESHOLD = 235;  // proximity must drop below this to trigger hand-off
+const HAND_TIMEOUT = 1500;       // ms below off-threshold before hand-off
 
 // --- RGB LED Ring ---
 const NUM_LEDS = 6;
@@ -266,6 +267,8 @@ if (!SIM_MODE) {
 // --- Kano Motion Sensor (USB CDC ACM) ---
 let handOn = false;
 let lastHighTime = 0;
+const proxBuffer = [];
+const PROX_WINDOW = 10;  // rolling average over 10 readings
 
 function simulateHandOn() {
   if (!handOn) {
@@ -303,9 +306,15 @@ if (!SIM_MODE) {
         const obj = JSON.parse(trimmed);
         if (obj.name === 'proximity-data' && obj.detail) {
           const prox = obj.detail.proximity || 0;
-          if (prox <= HAND_THRESHOLD) {
+          proxBuffer.push(prox);
+          if (proxBuffer.length > PROX_WINDOW) proxBuffer.shift();
+          const avg = Math.round(proxBuffer.reduce((a, b) => a + b, 0) / proxBuffer.length);
+
+          if (!handOn && avg >= HAND_ON_THRESHOLD) {
             lastHighTime = Date.now();
             simulateHandOn();
+          } else if (handOn && avg >= HAND_OFF_THRESHOLD) {
+            lastHighTime = Date.now();
           }
         }
       } catch (_e) { /* ignore parse errors */ }
@@ -592,7 +601,7 @@ gmApp.post('/api/map-upload', (req, res) => {
 });
 
 // --- GM Git Update API (SSE stream) ---
-gmApp.get('/api/update', (_req, res) => {
+gmApp.get('/api/update', (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -658,6 +667,38 @@ gmApp.post('/api/restart', (_req, res) => {
     } catch (_e) { /* ignore */ }
     process.exit(0);
   }, 2000);
+});
+
+// --- GM Live Logs (SSE stream of journalctl) ---
+gmApp.get('/api/logs', (req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+  });
+
+  const proc = spawn('journalctl', ['-u', 'netheril', '-f', '-n', '80', '--no-pager', '-o', 'short-iso'], {});
+
+  proc.stdout.on('data', (chunk) => {
+    chunk.toString().split('\n').filter(Boolean).forEach(line => {
+      res.write('data: ' + JSON.stringify({ text: line }) + '\n\n');
+    });
+  });
+
+  proc.stderr.on('data', (chunk) => {
+    chunk.toString().split('\n').filter(Boolean).forEach(line => {
+      res.write('data: ' + JSON.stringify({ text: line, err: true }) + '\n\n');
+    });
+  });
+
+  proc.on('close', () => {
+    res.write('data: ' + JSON.stringify({ text: '[journalctl exited]', err: true }) + '\n\n');
+    res.end();
+  });
+
+  req.on('close', () => {
+    proc.kill();
+  });
 });
 
 // ============================================================
