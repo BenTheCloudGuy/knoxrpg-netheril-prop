@@ -571,6 +571,9 @@ gmApp.delete('/api/pins/:id', (req, res) => {
   res.json({ ok: true });
 });
 
+const { execSync } = require('child_process');
+const { spawn } = require('child_process');
+
 // --- GM map image upload ---
 const MAP_FILE = 'faerunu_blank.jpg';
 const MAP_IMG_PATH = path.join(__dirname, 'public', MAP_FILE);
@@ -586,6 +589,75 @@ gmApp.post('/api/map-upload', (req, res) => {
     fs.writeFileSync(GM_MAP_IMG_PATH, buf);
     res.json({ ok: true });
   });
+});
+
+// --- GM Git Update API (SSE stream) ---
+gmApp.get('/api/update', (_req, res) => {
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+  });
+
+  function send(data) {
+    res.write('data: ' + JSON.stringify(data) + '\n\n');
+  }
+
+  send({ type: 'info', text: '$ git pull' });
+
+  const proc = spawn('git', ['pull'], { cwd: ROOT_DIR });
+
+  proc.stdout.on('data', (chunk) => {
+    chunk.toString().split('\n').filter(Boolean).forEach(line => send({ type: 'stdout', text: line }));
+  });
+
+  proc.stderr.on('data', (chunk) => {
+    chunk.toString().split('\n').filter(Boolean).forEach(line => send({ type: 'stderr', text: line }));
+  });
+
+  proc.on('close', (code) => {
+    if (code === 0) {
+      send({ type: 'info', text: '' });
+      send({ type: 'info', text: '$ npm install --production' });
+
+      const npmProc = spawn('npm', ['install', '--production'], { cwd: ROOT_DIR });
+
+      npmProc.stdout.on('data', (chunk) => {
+        chunk.toString().split('\n').filter(Boolean).forEach(line => send({ type: 'stdout', text: line }));
+      });
+
+      npmProc.stderr.on('data', (chunk) => {
+        chunk.toString().split('\n').filter(Boolean).forEach(line => send({ type: 'stderr', text: line }));
+      });
+
+      npmProc.on('close', (npmCode) => {
+        send({ type: 'done', code: npmCode, text: npmCode === 0 ? 'Update complete. Restart the service to apply.' : 'npm install failed (exit ' + npmCode + ')' });
+        res.end();
+      });
+    } else {
+      send({ type: 'done', code, text: 'git pull failed (exit ' + code + ')' });
+      res.end();
+    }
+  });
+
+  proc.on('error', (err) => {
+    send({ type: 'done', code: 1, text: 'Error: ' + err.message });
+    res.end();
+  });
+
+  req.on('close', () => {
+    proc.kill();
+  });
+});
+
+gmApp.post('/api/restart', (_req, res) => {
+  res.json({ ok: true, text: 'Restarting in 2 seconds...' });
+  setTimeout(() => {
+    try {
+      execSync('systemctl restart netheril 2>/dev/null || true');
+    } catch (_e) { /* ignore */ }
+    process.exit(0);
+  }, 2000);
 });
 
 // ============================================================

@@ -1,0 +1,17 @@
+[Unit]
+Description=Netheril Kiosk (Firefox)
+After=netheril.service graphical.target
+Requires=netheril.service
+PartOf=netheril.service
+
+[Service]
+Type=simple
+User=benthebuilder
+Environment=DISPLAY=:0
+ExecStartPre=/bin/bash -c 'for i in $(seq 1 30); do curl -s -o /dev/null http://localhost:3000 && break; sleep 1; done'
+ExecStart=/usr/bin/firefox --kiosk http://localhost:3000 --new-instance --no-remote
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=graphical.target

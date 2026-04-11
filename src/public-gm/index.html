@@ -140,6 +140,7 @@
     <div class="tab active" data-tab="sites">📜 Sites (Thuls)</div>
     <div class="tab" data-tab="crystals">🔮 Crystals</div>
     <div class="tab" data-tab="pins">📌 Map Pins</div>
+    <div class="tab" data-tab="update" style="margin-left:auto;">🔄 Update</div>
   </div>
 
   <!-- ==================== SITES TAB ==================== -->
@@ -213,6 +214,20 @@
           </div>
         </div>
         <div class="toolbar"><button class="btn btn-secondary" id="btn-refresh">↻ Refresh</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== UPDATE TAB ==================== -->
+  <div class="tab-content" id="tab-update">
+    <div style="width:100%; max-width:900px; margin:0 auto; padding:24px; display:flex; flex-direction:column; height:calc(100vh - 94px);">
+      <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+        <h2 style="font-size:1.1rem; color:var(--gold);">System Update</h2>
+        <button class="btn btn-primary" id="btn-run-update">🔄 Pull Latest</button>
+        <button class="btn btn-secondary" id="btn-restart-service" style="display:none;">♻ Restart Service</button>
+      </div>
+      <div id="update-terminal" style="flex:1; background:#0d0d0d; border:1px solid var(--border); border-radius:6px; padding:16px; overflow-y:auto; font-family:'Courier New',monospace; font-size:0.85rem; line-height:1.6; color:#ccc;">
+        <div style="color:var(--muted);">Click "Pull Latest" to run <code>git pull</code> + <code>npm install</code>.</div>
       </div>
     </div>
   </div>
@@ -680,6 +695,67 @@
     // ==================== HELPERS ====================
     function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
     function escAttr(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+    // ==================== UPDATE ====================
+    const updateTerminal = document.getElementById('update-terminal');
+    const btnRunUpdate = document.getElementById('btn-run-update');
+    const btnRestart = document.getElementById('btn-restart-service');
+
+    function appendLine(text, type) {
+      const line = document.createElement('div');
+      if (type === 'stderr') line.style.color = '#e94560';
+      else if (type === 'info') line.style.color = '#c4a55a';
+      else if (type === 'done') line.style.color = '#4CAF50';
+      else line.style.color = '#ccc';
+      line.textContent = text;
+      updateTerminal.appendChild(line);
+      updateTerminal.scrollTop = updateTerminal.scrollHeight;
+    }
+
+    btnRunUpdate.addEventListener('click', () => {
+      updateTerminal.innerHTML = '';
+      btnRunUpdate.disabled = true;
+      btnRunUpdate.textContent = '⏳ Updating...';
+      btnRestart.style.display = 'none';
+
+      const evtSource = new EventSource('/api/update');
+
+      evtSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        appendLine(data.text, data.type);
+
+        if (data.type === 'done') {
+          evtSource.close();
+          btnRunUpdate.disabled = false;
+          btnRunUpdate.textContent = '🔄 Pull Latest';
+          if (data.code === 0) {
+            btnRestart.style.display = '';
+          }
+        }
+      };
+
+      evtSource.onerror = () => {
+        evtSource.close();
+        appendLine('Connection lost.', 'stderr');
+        btnRunUpdate.disabled = false;
+        btnRunUpdate.textContent = '🔄 Pull Latest';
+      };
+    });
+
+    btnRestart.addEventListener('click', async () => {
+      btnRestart.disabled = true;
+      btnRestart.textContent = '♻ Restarting...';
+      appendLine('', 'info');
+      appendLine('Sending restart command...', 'info');
+      try {
+        await fetch('/api/restart', { method: 'POST' });
+        appendLine('Service is restarting. This page will reload in 5 seconds...', 'done');
+        setTimeout(() => location.reload(), 5000);
+      } catch (e) {
+        appendLine('Restart request sent. Reconnecting...', 'info');
+        setTimeout(() => location.reload(), 5000);
+      }
+    });
 
     // ==================== INIT ====================
     loadMap();
