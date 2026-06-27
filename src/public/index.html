@@ -9,22 +9,42 @@
       font-family: 'Cuneiform';
       src: url('/fonts/NotoSansCuneiform-Regular.ttf');
     }
+    @font-face {
+      font-family: 'Cinzel Decorative';
+      font-weight: 700;
+      font-display: swap;
+      src: url('/fonts/CinzelDecorative-Bold.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Cinzel Decorative';
+      font-weight: 900;
+      font-display: swap;
+      src: url('/fonts/CinzelDecorative-Black.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'Cinzel';
+      font-weight: 500;
+      font-display: swap;
+      src: url('/fonts/Cinzel-Regular.woff2') format('woff2');
+    }
+    @font-face {
+      font-family: 'EbonSigil';
+      font-display: swap;
+      src: url('/fonts/EbonSigil.otf') format('opentype');
+    }
 
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
     html, body {
-      width: 1920px;
-      height: 1080px;
+      width: 1920px; height: 1080px;
       overflow: hidden;
       font-family: 'Cuneiform', sans-serif;
-      user-select: none;
-      -webkit-user-select: none;
-      touch-action: none;
-      -ms-touch-action: none;
-      margin: 0; padding: 0;
+      user-select: none; -webkit-user-select: none;
+      touch-action: none; -ms-touch-action: none;
     }
 
     body {
+      --accent: 196,165,90;
       background:
         repeating-conic-gradient(rgba(0,0,0,0.02) 0% 25%, transparent 0% 50%) 0 0 / 4px 4px,
         radial-gradient(ellipse at 30% 20%, #c4a87a, transparent 60%),
@@ -32,17 +52,24 @@
         linear-gradient(160deg, #b89968 0%, #a0824e 30%, #8b6f3c 60%, #a08050 100%);
       background-color: #9a7b4a;
     }
+    body.color-white  { --accent: 240,240,235; }
+    body.color-blue   { --accent: 79,195,247; }
+    body.color-yellow { --accent: 255,213,79; }
+    body.color-pink   { --accent: 244,143,177; }
+    body.color-red    { --accent: 239,83,80; }
+    body.color-orange { --accent: 255,167,38; }
+    body.color-black  { --accent: 140,120,120; }
+    body.color-green  { --accent: 129,199,132; }
 
+    /* ===== Black cover / reveal ===== */
     @property --cover {
       syntax: '<percentage>';
       initial-value: 120%;
       inherits: false;
     }
-
     body::after {
       content: '';
-      position: fixed;
-      inset: 0;
+      position: fixed; inset: 0;
       background: #000;
       z-index: 999;
       pointer-events: none;
@@ -51,11 +78,9 @@
       mask-image: radial-gradient(ellipse 135% 118% at 50% 50%, black var(--cover), transparent calc(var(--cover) + 20%));
       transition: --cover 2.8s cubic-bezier(0.4, 0, 0.15, 1);
     }
-    body.active::after {
-      --cover: -25%;
-    }
+    body.active::after { --cover: -25%; }
 
-    /* ===================== LAYOUT ===================== */
+    /* ===== Layout ===== */
     #app {
       width: 1920px; height: 1080px;
       display: flex;
@@ -63,279 +88,301 @@
     .side-col {
       width: 384px; height: 1080px;
       display: flex; flex-direction: column;
+      padding: 30px 0;
+      transition: opacity 0.5s ease;
     }
+    #left-col  .side-block { justify-content: flex-end;   padding-right: 36px; }
+    #right-col .side-block { justify-content: flex-start; padding-left:  36px; }
     .side-block {
       flex: 1;
-      display: flex; align-items: center; justify-content: center;
-      border: 1px solid rgba(0,0,0,0.08);
-      position: relative; cursor: pointer;
+      display: flex; align-items: center;
+      position: relative;
     }
-    .side-block .side-glyph {
-      font-family: 'Cuneiform', sans-serif;
-      font-size: 120px;
-      color: transparent;
-      transition: color 0.8s ease, text-shadow 0.8s ease;
+    .side-block img {
+      height: 92px; width: auto;
+      opacity: 0.35;
+      filter:
+        drop-shadow(1px 1px 0 rgba(220,200,160,0.45))
+        drop-shadow(-1px -1px 0 rgba(40,25,10,0.35));
+      transition: opacity 0.6s ease, filter 0.6s ease, transform 0.4s ease;
     }
-    .side-block.activated .side-glyph {
-      color: rgba(60, 42, 20, 0.9);
-      text-shadow: 2px 2px 0px rgba(200,180,140,0.7), -2px -2px 0px rgba(40,25,10,0.5), 0 0 15px rgba(196,165,90,0.4);
+    /* School glyphs only visible on the hand-prompt view */
+    body:not(.view-hand) .side-col {
+      opacity: 0;
+      pointer-events: none;
     }
-    .side-block.activated.blue .side-glyph { text-shadow: 2px 2px 0px rgba(200,180,140,0.7), -2px -2px 0px rgba(40,25,10,0.5), 0 0 20px rgba(79,195,247,0.5); }
-    .side-block.activated.purple .side-glyph { text-shadow: 2px 2px 0px rgba(200,180,140,0.7), -2px -2px 0px rgba(40,25,10,0.5), 0 0 20px rgba(206,147,216,0.5); }
-    .side-block.activated.green .side-glyph { text-shadow: 2px 2px 0px rgba(200,180,140,0.7), -2px -2px 0px rgba(40,25,10,0.5), 0 0 20px rgba(129,199,132,0.5); }
-    .side-block.activated.red .side-glyph { text-shadow: 2px 2px 0px rgba(200,180,140,0.7), -2px -2px 0px rgba(40,25,10,0.5), 0 0 20px rgba(239,83,80,0.5); }
-    .side-block.wrong .side-glyph { color: rgba(180,40,30,0.8); text-shadow: 0 0 30px rgba(239,83,80,0.8); }
+    .side-block.active img {
+      opacity: 1;
+      filter:
+        drop-shadow(1px 1px 0 rgba(220,200,160,0.6))
+        drop-shadow(-1px -1px 0 rgba(40,25,10,0.5))
+        drop-shadow(0 0 18px rgba(var(--accent),0.8))
+        drop-shadow(0 0 38px rgba(var(--accent),0.5));
+      animation: side-pulse 2.2s ease-in-out infinite;
+    }
+    @keyframes side-pulse {
+      0%, 100% {
+        opacity: 0.85;
+        filter:
+          drop-shadow(1px 1px 0 rgba(220,200,160,0.6))
+          drop-shadow(-1px -1px 0 rgba(40,25,10,0.5))
+          drop-shadow(0 0 12px rgba(var(--accent),0.55))
+          drop-shadow(0 0 24px rgba(var(--accent),0.3));
+      }
+      50% {
+        opacity: 1;
+        filter:
+          drop-shadow(1px 1px 0 rgba(220,200,160,0.6))
+          drop-shadow(-1px -1px 0 rgba(40,25,10,0.5))
+          drop-shadow(0 0 28px rgba(var(--accent),0.95))
+          drop-shadow(0 0 58px rgba(var(--accent),0.6));
+      }
+    }
+    .side-block.dim img { opacity: 0.18; }
 
     #center-col {
       width: 1152px; height: 1080px;
-      display: flex; align-items: center; justify-content: center;
       position: relative;
-    }
-
-    /* ===================== PUZZLE GRID ===================== */
-    #glyph-grid {
-      display: grid;
-      grid-template-columns: repeat(5,1fr); grid-template-rows: repeat(5,1fr);
-      width: 1040px; height: 1040px;
-      opacity: 0; transition: opacity 1s ease;
-    }
-    #glyph-grid.active { opacity: 1; }
-    .glyph-cell {
       display: flex; align-items: center; justify-content: center;
-      font-family: 'Cuneiform', sans-serif; font-size: 96px; line-height: 1;
-      color: transparent;
-      transition: color 0.6s ease, text-shadow 0.6s ease;
-      border: 1px solid rgba(0,0,0,0.04); border-radius: 4px;
     }
-    .glyph-cell.carved {
-      color: rgba(60,42,20,0.85);
-      text-shadow: 1px 1px 0px rgba(200,180,140,0.6), -1px -1px 0px rgba(40,25,10,0.4), 0 0 2px rgba(80,55,25,0.3);
-    }
-    .glyph-cell.carved:active {
-      color: rgba(40,28,12,1);
-      text-shadow: 1px 1px 0px rgba(220,200,160,0.8), -1px -1px 0px rgba(30,18,5,0.6), 0 0 6px rgba(196,165,90,0.4);
-    }
-    .glyph-cell.used {
-      color: rgba(196,165,90,1);
-      text-shadow: 0 0 10px rgba(196,165,90,0.8), 0 0 25px rgba(196,165,90,0.5), 0 0 40px rgba(196,165,90,0.3);
-      pointer-events: none;
-    }
-    #glyph-grid.blue .glyph-cell.used { color: rgba(79,195,247,1); text-shadow: 0 0 10px rgba(79,195,247,0.8), 0 0 25px rgba(79,195,247,0.5), 0 0 40px rgba(79,195,247,0.3); }
-    #glyph-grid.purple .glyph-cell.used { color: rgba(206,147,216,1); text-shadow: 0 0 10px rgba(206,147,216,0.8), 0 0 25px rgba(206,147,216,0.5), 0 0 40px rgba(206,147,216,0.3); }
-    #glyph-grid.green .glyph-cell.used { color: rgba(129,199,132,1); text-shadow: 0 0 10px rgba(129,199,132,0.8), 0 0 25px rgba(129,199,132,0.5), 0 0 40px rgba(129,199,132,0.3); }
-    #glyph-grid.red .glyph-cell.used { color: rgba(239,83,80,1); text-shadow: 0 0 10px rgba(239,83,80,0.8), 0 0 25px rgba(239,83,80,0.5), 0 0 40px rgba(239,83,80,0.3); }
-    #glyph-grid.blue .glyph-cell.carved { text-shadow: 1px 1px 0px rgba(200,180,140,0.6), -1px -1px 0px rgba(40,25,10,0.4), 0 0 8px rgba(79,195,247,0.15); }
-    #glyph-grid.purple .glyph-cell.carved { text-shadow: 1px 1px 0px rgba(200,180,140,0.6), -1px -1px 0px rgba(40,25,10,0.4), 0 0 8px rgba(206,147,216,0.15); }
-    #glyph-grid.green .glyph-cell.carved { text-shadow: 1px 1px 0px rgba(200,180,140,0.6), -1px -1px 0px rgba(40,25,10,0.4), 0 0 8px rgba(129,199,132,0.15); }
-    #glyph-grid.red .glyph-cell.carved { text-shadow: 1px 1px 0px rgba(200,180,140,0.6), -1px -1px 0px rgba(40,25,10,0.4), 0 0 8px rgba(239,83,80,0.15); }
 
-    /* ===================== SCRYING MENU ===================== */
-    #scrying-menu {
-      display: none;
+    /* ===== Hand prompt ===== */
+    #hand-prompt {
       position: absolute; inset: 0;
+      display: none;
       align-items: center; justify-content: center;
-      z-index: 20;
     }
-    #scrying-menu.show { display: flex; }
+    #hand-prompt.show { display: flex; }
 
-    .scry-container {
+    .hand-img {
+      height: 810px;
+      width: auto;
+      opacity: 0.78;
+      filter:
+        drop-shadow(0 0 30px rgba(var(--accent),0.4))
+        drop-shadow(0 0 60px rgba(var(--accent),0.2));
+      animation: hand-pulse 3s ease-in-out infinite;
+    }
+    @keyframes hand-pulse {
+      0%, 100% { opacity: 0.62; filter: drop-shadow(0 0 18px rgba(var(--accent),0.2)); }
+      50%      { opacity: 0.9;  filter: drop-shadow(0 0 50px rgba(var(--accent),0.55)) drop-shadow(0 0 90px rgba(var(--accent),0.3)); }
+    }
+
+    /* ===== Cross view (4 buttons + center school glyph) ===== */
+    #cross-view {
+      position: absolute; inset: 0;
+      display: none;
+      align-items: center; justify-content: center;
+    }
+    #cross-view.show { display: flex; }
+
+    .cross-container {
       position: relative;
-      width: 800px; height: 800px;
+      width: 880px; height: 880px;
     }
 
-    .scry-center {
+    .cross-center {
       position: absolute;
       left: 50%; top: 50%;
       transform: translate(-50%, -50%);
-      width: 280px; height: 280px;
+      width: 360px; height: 360px;
       border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      border: 3px solid rgba(196,165,90,0.3);
+      border: 3px solid rgba(var(--accent),0.45);
       background: radial-gradient(circle, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.02) 100%);
-      animation: scry-pulse 3s ease-in-out infinite;
+      animation: cross-pulse 3s ease-in-out infinite;
     }
-    .scry-center .scry-glyph {
-      font-family: 'Cuneiform', sans-serif;
-      font-size: 100px;
-      color: rgba(60,42,20,0.9);
-      text-shadow: 2px 2px 0px rgba(200,180,140,0.7), -2px -2px 0px rgba(40,25,10,0.5), 0 0 20px rgba(196,165,90,0.4);
+    .cross-center img {
+      height: 230px; width: auto;
+      filter:
+        drop-shadow(1px 1px 0 rgba(220,200,160,0.6))
+        drop-shadow(-1px -1px 0 rgba(40,25,10,0.5))
+        drop-shadow(0 0 22px rgba(var(--accent),0.7));
+    }
+    @keyframes cross-pulse {
+      0%, 100% { border-color: rgba(var(--accent),0.35); box-shadow: 0 0 30px rgba(var(--accent),0.15); }
+      50%      { border-color: rgba(var(--accent),0.75); box-shadow: 0 0 60px rgba(var(--accent),0.4); }
     }
 
-    @keyframes scry-pulse {
-      0%, 100% { border-color: rgba(196,165,90,0.3); box-shadow: 0 0 20px rgba(196,165,90,0.1); }
-      50% { border-color: rgba(196,165,90,0.6); box-shadow: 0 0 40px rgba(196,165,90,0.25); }
-    }
-
-    .scry-orb {
+    .cross-btn {
       position: absolute;
-      width: 160px; height: 160px;
+      width: 200px; height: 200px;
       border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
-      border: 2px solid rgba(196,165,90,0.25);
+      border: 2px solid rgba(var(--accent),0.35);
       background: radial-gradient(circle, rgba(0,0,0,0.06) 0%, transparent 100%);
       cursor: pointer;
-      transition: border-color 0.3s, box-shadow 0.3s, transform 0.2s;
+      transition: border-color 0.25s, box-shadow 0.25s, transform 0.2s;
     }
-    .scry-orb:active { transform: scale(0.92); }
-    .scry-orb:hover, .scry-orb.active {
-      border-color: rgba(196,165,90,0.7);
-      box-shadow: 0 0 30px rgba(196,165,90,0.3);
-    }
-    .scry-orb .scry-glyph {
+    .cross-btn .glyph {
       font-family: 'Cuneiform', sans-serif;
-      font-size: 72px;
-      color: rgba(60,42,20,0.85);
-      text-shadow: 1px 1px 0px rgba(200,180,140,0.6), -1px -1px 0px rgba(40,25,10,0.4), 0 0 10px rgba(196,165,90,0.3);
+      font-size: 110px; line-height: 1;
+      color: rgba(60,42,20,0.9);
+      text-shadow:
+        1px 1px 0 rgba(220,200,160,0.6),
+        -1px -1px 0 rgba(40,25,10,0.4),
+        0 0 14px rgba(var(--accent),0.5);
+    }
+    .cross-btn:hover, .cross-btn.active {
+      border-color: rgba(var(--accent),0.85);
+      box-shadow: 0 0 40px rgba(var(--accent),0.4);
     }
 
-    /* Color tinting */
-    .scrying-color-green .scry-center { border-color: rgba(129,199,132,0.3); animation-name: scry-pulse-green; }
-    .scrying-color-green .scry-center .scry-glyph { text-shadow: 2px 2px 0 rgba(200,180,140,0.7), -2px -2px 0 rgba(40,25,10,0.5), 0 0 20px rgba(129,199,132,0.4); }
-    .scrying-color-green .scry-orb:hover, .scrying-color-green .scry-orb.active { border-color: rgba(129,199,132,0.7); box-shadow: 0 0 30px rgba(129,199,132,0.3); }
-    @keyframes scry-pulse-green {
-      0%, 100% { border-color: rgba(129,199,132,0.3); box-shadow: 0 0 20px rgba(129,199,132,0.1); }
-      50% { border-color: rgba(129,199,132,0.6); box-shadow: 0 0 40px rgba(129,199,132,0.25); }
-    }
-    .scrying-color-blue .scry-center { border-color: rgba(79,195,247,0.3); animation-name: scry-pulse-blue; }
-    .scrying-color-blue .scry-center .scry-glyph { text-shadow: 2px 2px 0 rgba(200,180,140,0.7), -2px -2px 0 rgba(40,25,10,0.5), 0 0 20px rgba(79,195,247,0.4); }
-    .scrying-color-blue .scry-orb:hover, .scrying-color-blue .scry-orb.active { border-color: rgba(79,195,247,0.7); box-shadow: 0 0 30px rgba(79,195,247,0.3); }
-    @keyframes scry-pulse-blue {
-      0%, 100% { border-color: rgba(79,195,247,0.3); box-shadow: 0 0 20px rgba(79,195,247,0.1); }
-      50% { border-color: rgba(79,195,247,0.6); box-shadow: 0 0 40px rgba(79,195,247,0.25); }
-    }
-    .scrying-color-purple .scry-center { border-color: rgba(206,147,216,0.3); animation-name: scry-pulse-purple; }
-    .scrying-color-purple .scry-center .scry-glyph { text-shadow: 2px 2px 0 rgba(200,180,140,0.7), -2px -2px 0 rgba(40,25,10,0.5), 0 0 20px rgba(206,147,216,0.4); }
-    .scrying-color-purple .scry-orb:hover, .scrying-color-purple .scry-orb.active { border-color: rgba(206,147,216,0.7); box-shadow: 0 0 30px rgba(206,147,216,0.3); }
-    @keyframes scry-pulse-purple {
-      0%, 100% { border-color: rgba(206,147,216,0.3); box-shadow: 0 0 20px rgba(206,147,216,0.1); }
-      50% { border-color: rgba(206,147,216,0.6); box-shadow: 0 0 40px rgba(206,147,216,0.25); }
-    }
-    .scrying-color-red .scry-center { border-color: rgba(239,83,80,0.3); animation-name: scry-pulse-red; }
-    .scrying-color-red .scry-center .scry-glyph { text-shadow: 2px 2px 0 rgba(200,180,140,0.7), -2px -2px 0 rgba(40,25,10,0.5), 0 0 20px rgba(239,83,80,0.4); }
-    .scrying-color-red .scry-orb:hover, .scrying-color-red .scry-orb.active { border-color: rgba(239,83,80,0.7); box-shadow: 0 0 30px rgba(239,83,80,0.3); }
-    @keyframes scry-pulse-red {
-      0%, 100% { border-color: rgba(239,83,80,0.3); box-shadow: 0 0 20px rgba(239,83,80,0.1); }
-      50% { border-color: rgba(239,83,80,0.6); box-shadow: 0 0 40px rgba(239,83,80,0.25); }
-    }
+    .cross-btn-top    { left: 50%; top: 0;    transform: translate(-50%, 0); }
+    .cross-btn-right  { right: 0;  top: 50%;  transform: translate(0, -50%); }
+    .cross-btn-bottom { left: 50%; bottom: 0; transform: translate(-50%, 0); }
+    .cross-btn-left   { left: 0;   top: 50%;  transform: translate(0, -50%); }
+    .cross-btn-top:active    { transform: translate(-50%, 0) scale(0.93); }
+    .cross-btn-right:active  { transform: translate(0, -50%) scale(0.93); }
+    .cross-btn-bottom:active { transform: translate(-50%, 0) scale(0.93); }
+    .cross-btn-left:active   { transform: translate(0, -50%) scale(0.93); }
 
-    /* Orb positions: top, right, bottom, left */
-    .scry-orb-top    { left: 50%; top: 0;    transform: translate(-50%, 0); }
-    .scry-orb-right  { right: 0;  top: 50%;  transform: translate(0, -50%); }
-    .scry-orb-bottom { left: 50%; bottom: 0; transform: translate(-50%, 0); }
-    .scry-orb-left   { left: 0;   top: 50%;  transform: translate(0, -50%); }
-    .scry-orb-top:active    { transform: translate(-50%, 0) scale(0.92); }
-    .scry-orb-right:active  { transform: translate(0, -50%) scale(0.92); }
-    .scry-orb-bottom:active { transform: translate(-50%, 0) scale(0.92); }
-    .scry-orb-left:active   { transform: translate(0, -50%) scale(0.92); }
-
-    /* ===================== CONTENT VIEW ===================== */
-    #content-view {
-      display: none;
+    /* ===== Page view (rendered markdown) ===== */
+    #page-view {
       position: absolute; inset: 0;
+      display: none;
       flex-direction: column;
       align-items: center; justify-content: center;
-      z-index: 25;
-      padding: 20px;
+      padding: 40px;
     }
-    #content-view.show { display: flex; }
+    #page-view.show { display: flex; }
 
-    #content-scroll {
+    /* ===== Preview view (hand-on without crystal): 2x4 grid of school symbols ===== */
+    #preview-view {
+      position: absolute; inset: 0;
+      display: none;
+      flex-direction: column;
+      align-items: center; justify-content: center;
+      padding: 30px 20px;
+    }
+    #preview-view.show { display: flex; }
+
+    .preview-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 220px);
+      grid-template-rows: repeat(2, 220px);
+      gap: 30px 30px;
+      margin-bottom: 38px;
+    }
+    .preview-cell {
+      position: relative;
+      width: 220px; height: 220px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      border: 2px solid rgba(60,42,20,0.35);
+      background: radial-gradient(circle, rgba(0,0,0,0.10) 0%, transparent 75%);
+    }
+    /* Color halo behind each symbol — uses the crystal's color */
+    .preview-cell::before {
+      content: '';
+      position: absolute; inset: 14px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(var(--cell-accent),0.55) 0%, rgba(var(--cell-accent),0.18) 45%, transparent 75%);
+      filter: blur(6px);
+      animation: cell-pulse 3.4s ease-in-out infinite;
+    }
+    .preview-cell img {
+      position: relative;
+      height: 150px; width: auto;
+      filter:
+        drop-shadow(1px 1px 0 rgba(220,200,160,0.55))
+        drop-shadow(-1px -1px 0 rgba(40,25,10,0.45))
+        drop-shadow(0 0 14px rgba(var(--cell-accent),0.7));
+    }
+    @keyframes cell-pulse {
+      0%, 100% { opacity: 0.55; }
+      50%      { opacity: 1; }
+    }
+    /* Per-cell crystal-color overrides */
+    .preview-cell[data-color="white"]  { --cell-accent: 240,240,235; }
+    .preview-cell[data-color="blue"]   { --cell-accent: 79,195,247; }
+    .preview-cell[data-color="yellow"] { --cell-accent: 255,213,79; }
+    .preview-cell[data-color="pink"]   { --cell-accent: 244,143,177; }
+    .preview-cell[data-color="red"]    { --cell-accent: 239,83,80; }
+    .preview-cell[data-color="orange"] { --cell-accent: 255,167,38; }
+    .preview-cell[data-color="black"]  { --cell-accent: 80,70,70; }
+    .preview-cell[data-color="green"]  { --cell-accent: 129,199,132; }
+
+    .preview-message {
+      font-family: 'EbonSigil', 'Cinzel Decorative', 'Cinzel', serif;
+      font-weight: 700;
+      font-size: 56px;
+      line-height: 1.25;
+      text-align: center;
+      max-width: 1050px;
+      color: rgba(50,32,12,0.96);
+      letter-spacing: 0.02em;
+      text-shadow:
+        2px 2px 0 rgba(230,210,170,0.55),
+        -1px -1px 0 rgba(40,25,10,0.5),
+        0 0 22px rgba(var(--accent),0.45);
+    }
+
+    #page-scroll {
       width: 100%; max-width: 1040px;
-      height: 100%; max-height: 920px;
+      height: 100%; max-height: 940px;
       overflow-y: auto; overflow-x: hidden;
       -webkit-overflow-scrolling: touch;
-      padding: 32px;
-      border: 1px solid rgba(0,0,0,0.14);
-      background: rgba(0,0,0,0.06);
-      border-radius: 8px;
+      padding: 38px 46px;
+      background: transparent;
+      border: none;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(60,42,20,0.25) transparent;
+      /* fade top/bottom into the parchment background */
+      -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%);
+      mask-image: linear-gradient(to bottom, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%);
     }
-    #content-text {
-      font-family: 'Cuneiform', sans-serif;
-      font-size: 38px; line-height: 1.4;
-      color: rgba(60,42,20,0.9);
-      text-shadow: 1px 1px 0px rgba(200,180,140,0.6), -1px -1px 0px rgba(40,25,10,0.4);
-      white-space: pre-wrap;
+    #page-scroll::-webkit-scrollbar { width: 6px; }
+    #page-scroll::-webkit-scrollbar-thumb { background: rgba(60,42,20,0.25); border-radius: 3px; }
+    #page-content {
+      font-family: 'Cinzel', 'Cinzel Decorative', serif;
+      font-size: 28px;
+      color: rgba(40,28,12,0.92);
+      text-shadow:
+        1px 1px 0 rgba(220,200,160,0.4),
+        -1px -1px 0 rgba(40,25,10,0.3);
     }
-    #content-title {
-      font-family: 'Cuneiform', sans-serif;
-      font-size: 52px;
-      color: rgba(60,42,20,0.95);
-      text-shadow: 2px 2px 0px rgba(200,180,140,0.7), -2px -2px 0px rgba(40,25,10,0.5), 0 0 15px rgba(196,165,90,0.4);
+    #page-content h1 {
+      font-family: 'Cinzel Decorative', serif;
+      font-weight: 900;
+      font-size: 64px; line-height: 1.1;
       margin-bottom: 16px;
-      text-align: center;
+      letter-spacing: 0.02em;
+      color: rgba(60,42,20,1);
+      text-shadow:
+        2px 2px 0 rgba(230,210,170,0.6),
+        -2px -2px 0 rgba(40,25,10,0.5),
+        0 0 22px rgba(var(--accent),0.55);
+    }
+    #page-content h2 { font-family: 'Cinzel Decorative', serif; font-weight: 700; font-size: 42px; margin: 26px 0 12px; letter-spacing: 0.02em; }
+    #page-content h3 { font-family: 'Cinzel Decorative', serif; font-weight: 700; font-size: 32px; margin: 20px 0 10px; letter-spacing: 0.02em; }
+    #page-content p  { font-size: 28px; line-height: 1.5; margin-bottom: 18px; }
+    #page-content em { color: rgba(80,55,25,0.85); font-style: italic; }
+    #page-content strong { color: rgba(60,42,20,1); }
+    #page-content ul, #page-content ol { margin: 12px 0 18px 36px; font-size: 26px; line-height: 1.5; }
+    #page-content li { margin-bottom: 8px; }
+    #page-content code {
+      font-family: monospace; font-size: 22px;
+      background: rgba(0,0,0,0.08); padding: 2px 6px; border-radius: 3px;
     }
 
-    #content-view.green #content-text { color: rgba(129,199,132,1); text-shadow: 0 0 10px rgba(129,199,132,0.4); }
-    #content-view.green #content-title { color: rgba(129,199,132,1); text-shadow: 0 0 15px rgba(129,199,132,0.5); }
-    #content-view.blue #content-text { color: rgba(79,195,247,1); text-shadow: 0 0 10px rgba(79,195,247,0.4); }
-    #content-view.blue #content-title { color: rgba(79,195,247,1); text-shadow: 0 0 15px rgba(79,195,247,0.5); }
-    #content-view.purple #content-text { color: rgba(206,147,216,1); text-shadow: 0 0 10px rgba(206,147,216,0.4); }
-    #content-view.purple #content-title { color: rgba(206,147,216,1); text-shadow: 0 0 15px rgba(206,147,216,0.5); }
-    #content-view.red #content-text { color: rgba(239,83,80,1); text-shadow: 0 0 10px rgba(239,83,80,0.4); }
-    #content-view.red #content-title { color: rgba(239,83,80,1); text-shadow: 0 0 15px rgba(239,83,80,0.5); }
-
-    /* ===================== SITES MAP VIEW ===================== */
-    #sites-map-view {
-      display: none;
-      position: absolute; inset: 0;
-      align-items: center; justify-content: center;
-      z-index: 25;
-    }
-    #sites-map-view.show { display: flex; }
-
-    #sites-map-container {
-      position: relative;
-      width: 1100px; height: 1020px;
-    }
-    #sites-map-img {
-      width: 100%; height: 100%;
-      object-fit: contain;
-      border-radius: 8px;
-      border: 2px solid rgba(196,165,90,0.2);
-      filter: sepia(0.15) brightness(0.95);
-    }
-    .site-pin {
-      position: absolute;
-      transform: translate(-50%, -50%);
-      cursor: pointer;
-      z-index: 10;
-      text-align: center;
-    }
-    .site-pin-glyph {
-      font-family: 'Cuneiform', sans-serif;
-      font-size: 42px;
-      display: flex; align-items: center; justify-content: center;
-      width: 64px; height: 64px;
+    #page-close {
+      position: absolute; top: 24px; right: 24px;
+      width: 72px; height: 72px;
       border-radius: 50%;
-      border: 2px solid rgba(196,165,90,0.5);
-      background: radial-gradient(circle, rgba(154,123,74,0.9) 0%, rgba(139,111,60,0.95) 100%);
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid rgba(var(--accent),0.4);
+      background: rgba(0,0,0,0.15);
+      cursor: pointer;
       color: rgba(60,42,20,0.9);
-      text-shadow: 1px 1px 0 rgba(200,180,140,0.6), -1px -1px 0 rgba(40,25,10,0.4), 0 0 8px rgba(196,165,90,0.3);
-      transition: transform 0.2s, box-shadow 0.2s;
+      font-family: 'Cuneiform', sans-serif;
+      font-size: 44px; line-height: 1;
+      z-index: 5;
     }
-    .site-pin:active .site-pin-glyph { transform: scale(0.9); }
-    .site-pin:hover .site-pin-glyph {
-      box-shadow: 0 0 20px rgba(196,165,90,0.5);
-      border-color: rgba(196,165,90,0.8);
-    }
-    .site-pin-label {
-      font-family: -apple-system, sans-serif;
-      font-size: 12px;
-      color: rgba(196,165,90,0.8);
-      margin-top: 4px;
-      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
-      white-space: nowrap;
-    }
+    #page-close:hover { border-color: rgba(var(--accent),0.85); box-shadow: 0 0 24px rgba(var(--accent),0.35); }
+    #page-close:active { transform: scale(0.92); }
 
-    /* ===================== SHARED ===================== */
-    @keyframes pulse-glow {
-      0%, 100% { text-shadow: 0 0 40px rgba(196,165,90,0.8), 0 0 80px rgba(196,165,90,0.4); }
-      50% { text-shadow: 0 0 60px rgba(196,165,90,1), 0 0 120px rgba(196,165,90,0.7); }
-    }
-
-    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
-    .fade-in { animation: fade-in 0.8s ease forwards; }
-
+    /* ===== Misc ===== */
     #exit-btn {
       position: fixed; top: 8px; right: 12px;
       font-family: 'Cuneiform', sans-serif; font-size: 0.8rem;
@@ -344,600 +391,366 @@
     }
     #exit-btn:active { color: #ef5350; }
 
-    /* ===================== HAND PROMPT ===================== */
-    #hand-prompt {
-      display: none;
-      position: absolute; inset: 0;
-      align-items: center; justify-content: center;
-      z-index: 30;
+    @keyframes fade-in {
+      from { opacity: 0; transform: scale(0.97); }
+      to   { opacity: 1; transform: scale(1); }
     }
-    #hand-prompt.show { display: flex; }
-
-    .hand-layout {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 60px;
-      width: 100%;
-    }
-    .hand-glyphs {
-      display: flex;
-      flex-direction: column;
-      gap: 24px;
-      align-items: center;
-    }
-    .hand-glyphs .hg {
-      font-family: 'Cuneiform', sans-serif;
-      font-size: 72px;
-      color: rgba(60,42,20,0.5);
-      text-shadow: 1px 1px 0 rgba(200,180,140,0.4), -1px -1px 0 rgba(40,25,10,0.3);
-      opacity: 0;
-      animation: glyph-fade-in 1.2s ease forwards;
-    }
-    .hand-glyphs .hg:nth-child(1) { animation-delay: 0.3s; }
-    .hand-glyphs .hg:nth-child(2) { animation-delay: 0.6s; }
-    .hand-glyphs .hg:nth-child(3) { animation-delay: 0.9s; }
-    .hand-glyphs .hg:nth-child(4) { animation-delay: 1.2s; }
-
-    @keyframes glyph-fade-in {
-      from { opacity: 0; transform: translateY(10px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-
-    .hand-icon {
-      position: relative;
-      display: flex; align-items: center; justify-content: center;
-    }
-
-    .hand-img {
-      height: 810px;
-      width: auto;
-      opacity: 0.8;
-      filter: drop-shadow(0 0 30px rgba(196,165,90,0.3));
-      animation: hand-pulse 3s ease-in-out infinite;
-    }
-
-    @keyframes hand-pulse {
-      0%, 100% { filter: drop-shadow(0 0 15px rgba(196,165,90,0.15)); opacity: 0.65; }
-      50%      { filter: drop-shadow(0 0 40px rgba(196,165,90,0.5)); opacity: 0.9; }
-    }
-
-    /* Color tinting for hand prompt */
-    #hand-prompt.blue .hand-img { filter: drop-shadow(0 0 30px rgba(79,195,247,0.4)); }
-    #hand-prompt.blue .hand-glyphs .hg { color: rgba(79,195,247,0.5); }
-    #hand-prompt.purple .hand-img { filter: drop-shadow(0 0 30px rgba(206,147,216,0.4)); }
-    #hand-prompt.purple .hand-glyphs .hg { color: rgba(206,147,216,0.5); }
-    #hand-prompt.green .hand-img { filter: drop-shadow(0 0 30px rgba(129,199,132,0.4)); }
-    #hand-prompt.green .hand-glyphs .hg { color: rgba(129,199,132,0.5); }
-    #hand-prompt.red .hand-img { filter: drop-shadow(0 0 30px rgba(239,83,80,0.4)); }
-    #hand-prompt.red .hand-glyphs .hg { color: rgba(239,83,80,0.5); }
+    .fade-in { animation: fade-in 0.6s ease forwards; }
   </style>
 </head>
 <body>
   <button id="exit-btn">[EXIT]</button>
 
   <div id="app">
+    <!-- LEFT: 4 school icons -->
     <div class="side-col" id="left-col">
-      <div class="side-block" id="box-A"><span class="side-glyph"></span></div>
-      <div class="side-block" id="box-B"><span class="side-glyph"></span></div>
-      <div class="side-block" id="box-C"><span class="side-glyph"></span></div>
-      <div class="side-block" id="box-D"><span class="side-glyph"></span></div>
+      <div class="side-block" data-school="abjuration"><img src="/img/schools/abjuration.png" alt="abjuration"></div>
+      <div class="side-block" data-school="conjuration"><img src="/img/schools/conjuration.png" alt="conjuration"></div>
+      <div class="side-block" data-school="divination"><img src="/img/schools/divination.png" alt="divination"></div>
+      <div class="side-block" data-school="enchantment"><img src="/img/schools/enchantment.png" alt="enchantment"></div>
     </div>
 
+    <!-- CENTER: hand prompt / cross view / page view -->
     <div id="center-col">
-      <div id="glyph-grid"></div>
-
-      <div id="scrying-menu">
-        <div class="scry-container" id="scry-container">
-          <div class="scry-center"><span class="scry-glyph">𒅆𒋗</span></div>
-          <div class="scry-orb scry-orb-top" data-menu="sites"><span class="scry-glyph">𒌷</span></div>
-          <div class="scry-orb scry-orb-right" data-menu="map"><span class="scry-glyph">𒆠</span></div>
-          <div class="scry-orb scry-orb-bottom" data-menu="research"><span class="scry-glyph">𒉆</span></div>
-          <div class="scry-orb scry-orb-left" data-menu="personnel"><span class="scry-glyph">𒇽</span></div>
-        </div>
-      </div>
-
-      <div id="sites-map-view">
-        <div id="sites-map-container">
-          <img id="sites-map-img" src="/faerunu_blank.jpg">
-        </div>
-      </div>
-
-      <div id="content-view">
-        <div id="content-title"></div>
-        <div id="content-scroll">
-          <div id="content-text"></div>
-        </div>
-      </div>
-
       <div id="hand-prompt">
-        <div class="hand-layout">
-          <div class="hand-glyphs">
-            <span class="hg">𒀭</span>
-            <span class="hg">𒌓</span>
-            <span class="hg">𒁹</span>
-            <span class="hg">𒂗</span>
-          </div>
-          <div class="hand-icon">
-            <img class="hand-img" src="/handprint.png" alt="">
-          </div>
-          <div class="hand-glyphs">
-            <span class="hg">𒅆</span>
-            <span class="hg">𒋗</span>
-            <span class="hg">𒌷</span>
-            <span class="hg">𒉆</span>
-          </div>
+        <img class="hand-img" src="/handprint.png" alt="">
+      </div>
+
+      <div id="cross-view">
+        <div class="cross-container">
+          <div class="cross-center"><img id="cross-center-img" src="" alt=""></div>
+          <div class="cross-btn cross-btn-top"    data-loc="top"><span class="glyph">&#x12313;</span></div>
+          <div class="cross-btn cross-btn-right"  data-loc="right"><span class="glyph">&#x122D7;</span></div>
+          <div class="cross-btn cross-btn-bottom" data-loc="bottom"><span class="glyph">&#x121B3;</span></div>
+          <div class="cross-btn cross-btn-left"   data-loc="left"><span class="glyph">&#x12146;</span></div>
+        </div>
+      </div>
+
+      <div id="preview-view">
+        <div class="preview-grid">
+          <div class="preview-cell" data-color="white"><img src="/img/schools/abjuration.png"    alt="abjuration"></div>
+          <div class="preview-cell" data-color="blue"><img src="/img/schools/conjuration.png"   alt="conjuration"></div>
+          <div class="preview-cell" data-color="yellow"><img src="/img/schools/divination.png"  alt="divination"></div>
+          <div class="preview-cell" data-color="pink"><img src="/img/schools/enchantment.png"   alt="enchantment"></div>
+          <div class="preview-cell" data-color="red"><img src="/img/schools/evocation.png"      alt="evocation"></div>
+          <div class="preview-cell" data-color="orange"><img src="/img/schools/illusion.png"    alt="illusion"></div>
+          <div class="preview-cell" data-color="black"><img src="/img/schools/necromancy.png"   alt="necromancy"></div>
+          <div class="preview-cell" data-color="green"><img src="/img/schools/transmutation.png" alt="transmutation"></div>
+        </div>
+        <div class="preview-message">Seek the crystals to unlock treasures, clues and dangers!</div>
+      </div>
+
+      <div id="page-view">
+        <button id="page-close" title="close">&#x12471;</button>
+        <div id="page-scroll">
+          <div id="page-content"></div>
         </div>
       </div>
     </div>
 
+    <!-- RIGHT: 4 school icons -->
     <div class="side-col" id="right-col">
-      <div class="side-block" id="box-E"><span class="side-glyph"></span></div>
-      <div class="side-block" id="box-F"><span class="side-glyph"></span></div>
-      <div class="side-block" id="box-G"><span class="side-glyph"></span></div>
-      <div class="side-block" id="box-H"><span class="side-glyph"></span></div>
+      <div class="side-block" data-school="evocation"><img src="/img/schools/evocation.png" alt="evocation"></div>
+      <div class="side-block" data-school="illusion"><img src="/img/schools/illusion.png" alt="illusion"></div>
+      <div class="side-block" data-school="necromancy"><img src="/img/schools/necromancy.png" alt="necromancy"></div>
+      <div class="side-block" data-school="transmutation"><img src="/img/schools/transmutation.png" alt="transmutation"></div>
     </div>
   </div>
 
   <script>
-    // ===================== ELEMENTS =====================
-    const grid = document.getElementById('glyph-grid');
-    const scryingMenu = document.getElementById('scrying-menu');
-    const scryContainer = document.getElementById('scry-container');
-    const sitesMapView = document.getElementById('sites-map-view');
-    const sitesMapContainer = document.getElementById('sites-map-container');
-    const contentView = document.getElementById('content-view');
-    const contentTitle = document.getElementById('content-title');
-    const contentScroll = document.getElementById('content-scroll');
-    const contentText = document.getElementById('content-text');
-    const handPrompt = document.getElementById('hand-prompt');
+    // ===== Elements =====
+    const handPrompt     = document.getElementById('hand-prompt');
+    const crossView      = document.getElementById('cross-view');
+    const crossCenterImg = document.getElementById('cross-center-img');
+    const pageView       = document.getElementById('page-view');
+    const pageContent    = document.getElementById('page-content');
+    const pageScroll     = document.getElementById('page-scroll');
+    const pageClose      = document.getElementById('page-close');
+    const previewView    = document.getElementById('preview-view');
+    const sideBlocks     = document.querySelectorAll('.side-block');
 
-    const colorClasses = ['blue', 'purple', 'green', 'red', 'unknown'];
-    const sideBoxIds = ['box-A','box-B','box-C','box-D','box-E','box-F','box-G','box-H'];
-    const sideBoxes = sideBoxIds.map(id => document.getElementById(id));
-    const cells = [];
+    const COLOR_CLASSES = ['color-white','color-blue','color-yellow','color-pink','color-red','color-orange','color-black','color-green'];
 
-    // ===================== SOUND EFFECTS =====================
+    // ===== State =====
+    let crystalActive = false;
+    let handActive    = false;
+    let currentSchool = null;
+    let currentColor  = null;
+    let currentView   = 'idle';   // 'idle' | 'hand' | 'cross' | 'page'
+
+    // ===== Audio cues =====
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-
-    function playStoneGrind() {
-      const duration = 0.15, bufferSize = audioCtx.sampleRate * duration;
-      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) {
-        const t = i / bufferSize;
-        data[i] = (Math.random()*2-1)*(1-t)*0.4*Math.sin(t*80)*(1+Math.sin(t*300)*0.3);
-      }
-      const src = audioCtx.createBufferSource(); src.buffer = buffer;
-      const lp = audioCtx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=800; lp.Q.value=1.5;
-      src.connect(lp).connect(audioCtx.destination); src.start();
-    }
+    document.addEventListener('touchstart', () => { if (audioCtx.state==='suspended') audioCtx.resume(); }, { once: true });
+    document.addEventListener('click',      () => { if (audioCtx.state==='suspended') audioCtx.resume(); }, { once: true });
 
     function playArcaneHum() {
-      const now = audioCtx.currentTime, dur = 2.5;
+      const now = audioCtx.currentTime, dur = 2.2;
       const gain = audioCtx.createGain();
-      gain.gain.setValueAtTime(0.25, now); gain.gain.exponentialRampToValueAtTime(0.01, now+dur);
+      gain.gain.setValueAtTime(0.22, now); gain.gain.exponentialRampToValueAtTime(0.01, now+dur);
       gain.connect(audioCtx.destination);
-      [110,165,220,330].forEach(f => { const o=audioCtx.createOscillator(); o.type='sine'; o.frequency.value=f; o.connect(gain); o.start(now); o.stop(now+dur); });
+      [110,165,220,330].forEach(f => {
+        const o = audioCtx.createOscillator();
+        o.type = 'sine'; o.frequency.value = f; o.connect(gain);
+        o.start(now); o.stop(now+dur);
+      });
     }
-
-    function playRumble() {
-      const duration = 0.5, bufferSize = audioCtx.sampleRate * duration;
-      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-      const data = buffer.getChannelData(0);
-      for (let i = 0; i < bufferSize; i++) { const t=i/bufferSize; data[i]=(Math.random()*2-1)*(1-t*t)*0.5; }
-      const src = audioCtx.createBufferSource(); src.buffer = buffer;
-      const lp = audioCtx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=200;
-      src.connect(lp).connect(audioCtx.destination); src.start();
-    }
-
     function playCrystalChime() {
       const now = audioCtx.currentTime;
       const gain = audioCtx.createGain();
-      gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.001, now+1.2);
+      gain.gain.setValueAtTime(0.18, now); gain.gain.exponentialRampToValueAtTime(0.001, now+1.1);
       gain.connect(audioCtx.destination);
-      [523,659,784].forEach((f,i) => { const o=audioCtx.createOscillator(); o.type='triangle'; o.frequency.value=f; o.connect(gain); o.start(now+i*0.1); o.stop(now+1.2); });
+      [523,659,784].forEach((f,i) => {
+        const o = audioCtx.createOscillator();
+        o.type = 'triangle'; o.frequency.value = f; o.connect(gain);
+        o.start(now+i*0.08); o.stop(now+1.1);
+      });
     }
-
     function playOrbSelect() {
       const now = audioCtx.currentTime;
       const gain = audioCtx.createGain();
-      gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.001, now+0.6);
+      gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.001, now+0.55);
       gain.connect(audioCtx.destination);
-      const o = audioCtx.createOscillator(); o.type='sine'; o.frequency.value=440;
+      const o = audioCtx.createOscillator();
+      o.type='sine'; o.frequency.value=440;
       o.frequency.exponentialRampToValueAtTime(880, now+0.3);
-      o.connect(gain); o.start(now); o.stop(now+0.6);
+      o.connect(gain); o.start(now); o.stop(now+0.55);
     }
 
-    document.addEventListener('touchstart', () => { if (audioCtx.state==='suspended') audioCtx.resume(); }, { once: true });
-
-    // ===================== BUILD PUZZLE GRID =====================
-    for (let i = 0; i < 25; i++) {
-      const cell = document.createElement('div');
-      cell.className = 'glyph-cell'; cell.dataset.index = i;
-      grid.appendChild(cell); cells.push(cell);
+    // ===== View transitions =====
+    const VIEW_CLASSES = ['view-idle','view-hand','view-preview','view-cross','view-page'];
+    function setViewClass(view) {
+      VIEW_CLASSES.forEach(c => document.body.classList.remove(c));
+      document.body.classList.add('view-' + view);
     }
 
-    // ===================== STATE =====================
-    let currentGlyphs = [];
-    let answerSequence = [];
-    let playerSequence = [];
-    let currentColor = '';
-    let crystalActive = false;
-    let handActive = false;
-    let puzzleSolved = false;
-    let currentView = 'idle';
-    let sitesData = null;
-    let currentSite = null;
-    let sideNavActions = [];
-
-    // ===================== VIEW MANAGEMENT =====================
     function hideAllViews() {
-      grid.style.display = '';
-      grid.classList.remove('active');
-      scryingMenu.classList.remove('show');
-      sitesMapView.classList.remove('show');
-      contentView.classList.remove('show');
       handPrompt.classList.remove('show');
-      colorClasses.forEach(c => { contentView.classList.remove(c); handPrompt.classList.remove(c); });
-      scryingMenu.className = 'scrying-menu'; // reset to base (id keeps selector)
-      // Actually just remove color classes
-      scryingMenu.classList.remove('show');
-      ['scrying-color-green','scrying-color-blue','scrying-color-purple','scrying-color-red'].forEach(c => scryingMenu.classList.remove(c));
-    }
-
-    function clearSideNav() {
-      sideNavActions = [];
-      sideBoxes.forEach(box => {
-        box.classList.remove('activated','wrong',...colorClasses);
-        box.querySelector('.side-glyph').textContent = '';
-        box.onclick = null;
-      });
-    }
-
-    function setSideNav(actions) {
-      clearSideNav();
-      sideNavActions = actions;
-      actions.forEach((act, i) => {
-        if (i >= 8) return;
-        const box = sideBoxes[i];
-        box.querySelector('.side-glyph').textContent = act.glyph;
-        box.classList.add('activated', currentColor);
-        box.onclick = (e) => { e.preventDefault(); playOrbSelect(); act.action(); };
-      });
-    }
-
-    // ===================== PUZZLE =====================
-    function setGlyphs(glyphs) {
-      currentGlyphs = glyphs;
-      cells.forEach((cell, i) => { cell.textContent = glyphs[i] || ''; });
-    }
-
-    function showGlyphs(glyphs) {
-      setGlyphs(glyphs);
-      grid.style.display = '';
-      grid.classList.add('active');
-      cells.forEach((cell, i) => { setTimeout(() => cell.classList.add('carved'), 15*i); });
-    }
-
-    function hideGlyphs() {
-      cells.forEach(cell => cell.classList.remove('carved','used'));
-      setTimeout(() => grid.classList.remove('active'), 600);
-      colorClasses.forEach(c => grid.classList.remove(c));
-    }
-
-    function resetPuzzle() {
-      playerSequence = [];
-      puzzleSolved = false;
-      clearSideNav();
-      cells.forEach(cell => cell.classList.remove('used'));
-    }
-
-    function wrongAnswer() {
-      playRumble();
-      sideBoxes.forEach(box => box.classList.add('wrong'));
-      setTimeout(() => { sideBoxes.forEach(box => box.classList.remove('wrong')); resetPuzzle(); }, 800);
-    }
-
-    function activatePuzzleSideBox(step, glyphChar) {
-      const box = sideBoxes[step];
-      box.querySelector('.side-glyph').textContent = glyphChar;
-      box.classList.add('activated', currentColor);
-    }
-
-    function checkAnswer() {
-      const correct = playerSequence.length === answerSequence.length &&
-        playerSequence.every((idx, i) => idx === answerSequence[i]);
-      if (correct) {
-        puzzleSolved = true;
-        playArcaneHum();
-        setTimeout(() => showScryingMenu(), 1500);
-      } else {
-        wrongAnswer();
-      }
-    }
-
-    // ===================== SCRYING MENU =====================
-    async function loadSitesData() {
-      try {
-        const res = await fetch('/api/sites', { cache: 'no-store' });
-        sitesData = await res.json();
-      } catch (e) {
-        console.error('Failed to load sites', e);
-        sitesData = { thuls: [] };
-      }
-    }
-
-    function showScryingMenu() {
-      hideAllViews();
-      clearSideNav();
-      currentView = 'menu';
-      grid.style.display = 'none';
-      scryingMenu.classList.add('show', 'scrying-color-' + currentColor);
+      crossView.classList.remove('show');
+      pageView.classList.remove('show');
+      previewView.classList.remove('show');
     }
 
     function showHandPrompt() {
       hideAllViews();
-      clearSideNav();
       currentView = 'hand';
-      grid.style.display = 'none';
-      handPrompt.classList.add('show', currentColor);
+      setViewClass('hand');
+      handPrompt.classList.add('show', 'fade-in');
+      highlightSchool(currentSchool);
     }
 
-    document.querySelectorAll('.scry-orb').forEach(orb => {
-      function h(e) {
-        e.preventDefault();
-        playOrbSelect();
-        const m = orb.dataset.menu;
-        if (m === 'sites') openSitesMap();
-        else if (m === 'map') openFacilityMap();
-        else if (m === 'research') openResearch();
-        else if (m === 'personnel') openPersonnel();
+    function showPreviewView() {
+      hideAllViews();
+      currentView = 'preview';
+      setViewClass('preview');
+      previewView.classList.add('show', 'fade-in');
+      clearSchoolHighlight();
+    }
+
+    function showCrossView() {
+      hideAllViews();
+      currentView = 'cross';
+      setViewClass('cross');
+      if (currentSchool) {
+        crossCenterImg.src = '/img/schools/' + currentSchool + '.png';
       }
-      orb.addEventListener('click', h);
-      orb.addEventListener('touchend', h);
+      crossView.classList.add('show', 'fade-in');
+      highlightSchool(currentSchool);
+    }
+
+    function showPageView(html) {
+      hideAllViews();
+      currentView = 'page';
+      setViewClass('page');
+      pageContent.innerHTML = html;
+      pageScroll.scrollTop = 0;
+      pageView.classList.add('show', 'fade-in');
+    }
+
+    function highlightSchool(school) {
+      sideBlocks.forEach(b => {
+        b.classList.remove('active','dim');
+        if (school) {
+          if (b.dataset.school === school) b.classList.add('active');
+          else b.classList.add('dim');
+        }
+      });
+    }
+    function clearSchoolHighlight() {
+      sideBlocks.forEach(b => b.classList.remove('active','dim'));
+    }
+
+    function setAccentColor(color) {
+      COLOR_CLASSES.forEach(c => document.body.classList.remove(c));
+      if (color) document.body.classList.add('color-' + color);
+    }
+
+    // ===== Markdown rendering (minimal) =====
+    function escHtml(s) {
+      return s.replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[c]);
+    }
+    function renderInline(s) {
+      return s
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+        .replace(/`([^`]+)`/g, '<code>$1</code>');
+    }
+    function renderMarkdown(md) {
+      const lines = md.split(/\r?\n/);
+      const out = [];
+      let inList = false;
+      const closeList = () => { if (inList) { out.push('</ul>'); inList = false; } };
+      for (const raw of lines) {
+        const line = raw.trim();
+        if (!line) { closeList(); continue; }
+        let m;
+        if ((m = line.match(/^### (.+)/))) { closeList(); out.push('<h3>' + renderInline(escHtml(m[1])) + '</h3>'); continue; }
+        if ((m = line.match(/^## (.+)/)))  { closeList(); out.push('<h2>' + renderInline(escHtml(m[1])) + '</h2>'); continue; }
+        if ((m = line.match(/^# (.+)/)))   { closeList(); out.push('<h1>' + renderInline(escHtml(m[1])) + '</h1>'); continue; }
+        if ((m = line.match(/^[-*]\s+(.+)/))) {
+          if (!inList) { out.push('<ul>'); inList = true; }
+          out.push('<li>' + renderInline(escHtml(m[1])) + '</li>');
+          continue;
+        }
+        out.push('<p>' + renderInline(escHtml(line)) + '</p>');
+      }
+      closeList();
+      return out.join('\n');
+    }
+
+    async function loadPage(school, location) {
+      try {
+        const res = await fetch('/api/page/' + school + '/' + location, { cache: 'no-store' });
+        if (!res.ok) throw new Error('http ' + res.status);
+        let md = await res.text();
+        // Extract leading `<!-- font: NAME -->` marker and apply it to the page.
+        let pageFont = null;
+        const m = md.match(/^\s*<!--\s*font:\s*([\w.-]+)\s*-->\s*\r?\n?/i);
+        if (m) { pageFont = m[1]; md = md.slice(m[0].length); }
+        const pc = document.getElementById('page-content');
+        if (pc) pc.style.fontFamily = pageFont
+          ? ("'" + pageFont.replace(/'/g, "\\'") + "', 'Cinzel', 'Cinzel Decorative', serif")
+          : '';
+        showPageView(renderMarkdown(md));
+      } catch (e) {
+        showPageView('<h1>Lost in the Weave</h1><p>The page could not be retrieved.</p>');
+      }
+    }
+
+    // ===== Cross button handlers =====
+    document.querySelectorAll('.cross-btn').forEach(btn => {
+      const fire = (e) => {
+        e.preventDefault();
+        if (currentView !== 'cross' || !currentSchool) return;
+        playOrbSelect();
+        const loc = btn.dataset.loc;
+        loadPage(currentSchool, loc);
+      };
+      btn.addEventListener('click', fire);
+      btn.addEventListener('touchend', fire);
     });
 
-    // ===================== SITES MAP =====================
-    function openSitesMap() {
-      hideAllViews();
-      currentView = 'sites';
-      grid.style.display = 'none';
-      sitesMapView.classList.add('show', 'fade-in');
-
-      sitesMapContainer.querySelectorAll('.site-pin').forEach(el => el.remove());
-
-      if (sitesData && sitesData.thuls) {
-        sitesData.thuls.forEach(thul => {
-          const pin = document.createElement('div');
-          pin.className = 'site-pin';
-          pin.style.left = thul.x + '%';
-          pin.style.top = thul.y + '%';
-          pin.innerHTML = '<div class="site-pin-glyph">' + escHtml(thul.glyph) + '</div><div class="site-pin-label">' + escHtml(thul.name) + '</div>';
-          pin.addEventListener('click', (e) => { e.preventDefault(); openSiteDetail(thul); });
-          pin.addEventListener('touchend', (e) => { e.preventDefault(); openSiteDetail(thul); });
-          sitesMapContainer.appendChild(pin);
-        });
-      }
-
-      setSideNav([
-        { glyph: '\u{1208D}', action: () => showScryingMenu() },  // HOME (E2)
-      ]);
-    }
-
-    // ===================== SITE DETAIL =====================
-    function openSiteDetail(thul) {
-      hideAllViews();
-      currentView = 'site-detail';
-      grid.style.display = 'none';
-
-      contentView.classList.add('show', currentColor);
-      contentTitle.textContent = thul.name;
-      contentText.textContent = thul.description || '';
-      contentScroll.scrollTop = 0;
-
-      const nav = [
-        { glyph: '\u{12097}', action: () => openSitesMap() },     // BACK (EN)
-        { glyph: '\u{1208D}', action: () => showScryingMenu() },  // HOME (E2)
-      ];
-      if (thul.pages) thul.pages.forEach(p => nav.push({ glyph: p.glyph || '\u{12146}', action: () => openPage(thul, p) }));
-      if (thul.research) thul.research.forEach(p => nav.push({ glyph: p.glyph || '\u{12246}', action: () => openPage(thul, p) }));
-      if (thul.personnel) thul.personnel.forEach(p => nav.push({ glyph: p.glyph || '\u{121FD}', action: () => openPage(thul, p) }));
-      setSideNav(nav);
-    }
-
-    function openPage(thul, page) {
-      hideAllViews();
-      currentView = 'content';
-      grid.style.display = 'none';
-
-      contentView.classList.add('show', currentColor);
-      contentTitle.textContent = page.title || '';
-      contentText.textContent = page.content || '';
-      contentScroll.scrollTop = 0;
-
-      setSideNav([
-        { glyph: '\u{12097}', action: () => openSiteDetail(thul) },
-        { glyph: '\u{1208D}', action: () => showScryingMenu() },
-      ]);
-    }
-
-    // ===================== FACILITY MAP =====================
-    function openFacilityMap() {
-      hideAllViews();
-      currentView = 'content';
-      grid.style.display = 'none';
-
-      contentView.classList.add('show', currentColor);
-      contentTitle.textContent = currentSite ? currentSite.name + ' \u2014 Facility Map' : 'Facility Map';
-      contentText.textContent = 'The facility map will appear here.\n\nThis section is under construction by the Arcanist Council.';
-      contentScroll.scrollTop = 0;
-
-      setSideNav([{ glyph: '\u{1208D}', action: () => showScryingMenu() }]);
-    }
-
-    // ===================== RESEARCH =====================
-    function openResearch() {
-      hideAllViews();
-      currentView = 'content';
-      grid.style.display = 'none';
-
-      const site = findCurrentSite();
-      if (site && site.research && site.research.length > 0) {
-        const page = site.research[0];
-        contentView.classList.add('show', currentColor);
-        contentTitle.textContent = page.title || 'Research';
-        contentText.textContent = page.content || '';
-        contentScroll.scrollTop = 0;
-
-        const nav = [{ glyph: '\u{1208D}', action: () => showScryingMenu() }];
-        site.research.forEach((p, i) => {
-          if (i > 0) nav.push({ glyph: p.glyph || '\u{12246}', action: () => openPage(site, p) });
-        });
-        setSideNav(nav);
-      } else {
-        contentView.classList.add('show', currentColor);
-        contentTitle.textContent = 'Research Archives';
-        contentText.textContent = 'No research records available for this crystal\'s access level.';
-        setSideNav([{ glyph: '\u{1208D}', action: () => showScryingMenu() }]);
-      }
-    }
-
-    // ===================== PERSONNEL =====================
-    function openPersonnel() {
-      hideAllViews();
-      currentView = 'content';
-      grid.style.display = 'none';
-
-      const site = findCurrentSite();
-      if (site && site.personnel && site.personnel.length > 0) {
-        const page = site.personnel[0];
-        contentView.classList.add('show', currentColor);
-        contentTitle.textContent = page.title || 'Personnel';
-        contentText.textContent = page.content || '';
-        contentScroll.scrollTop = 0;
-
-        const nav = [{ glyph: '\u{1208D}', action: () => showScryingMenu() }];
-        site.personnel.forEach((p, i) => {
-          if (i > 0) nav.push({ glyph: p.glyph || '\u{121FD}', action: () => openPage(site, p) });
-        });
-        setSideNav(nav);
-      } else {
-        contentView.classList.add('show', currentColor);
-        contentTitle.textContent = 'Personnel Records';
-        contentText.textContent = 'No personnel records available for this crystal\'s access level.';
-        setSideNav([{ glyph: '\u{1208D}', action: () => showScryingMenu() }]);
-      }
-    }
-
-    // ===================== HELPERS =====================
-    function findCurrentSite() {
-      if (!sitesData || !sitesData.thuls) return null;
-      return sitesData.thuls.find(t => t.crystal === currentColor) || null;
-    }
-    function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
-
-    // ===================== GRID TAP HANDLER =====================
-    function handleCellTap(e) {
+    // ===== Page close =====
+    function handlePageClose(e) {
       e.preventDefault();
-      if (currentView !== 'puzzle') return;
-      const touch = e.changedTouches ? e.changedTouches[0] : e;
-      const cell = document.elementFromPoint(touch.clientX, touch.clientY);
-      if (!cell || !cell.classList.contains('glyph-cell')) return;
-      if (!cell.classList.contains('carved') || cell.classList.contains('used')) return;
-      if (puzzleSolved || !crystalActive) return;
-      if (playerSequence.length >= answerSequence.length) return;
-
-      const tappedIndex = parseInt(cell.dataset.index, 10);
-      cell.classList.add('used');
-      playStoneGrind();
-      playerSequence.push(tappedIndex);
-      activatePuzzleSideBox(playerSequence.length - 1, currentGlyphs[tappedIndex]);
-
-      if (playerSequence.length >= answerSequence.length) {
-        setTimeout(checkAnswer, 500);
-      }
+      playOrbSelect();
+      if (handActive && crystalActive)      showCrossView();
+      else if (handActive)                  showPreviewView();
+      else                                  showHandPrompt();
     }
-    grid.addEventListener('touchend', handleCellTap, { passive: false });
-    grid.addEventListener('click', handleCellTap);
+    pageClose.addEventListener('click',    handlePageClose);
+    pageClose.addEventListener('touchend', handlePageClose);
 
-    // ===================== WEBSOCKET =====================
+    // ===== Exit =====
+    function handleExit(e) {
+      e.stopPropagation(); e.preventDefault();
+      fetch('/exit', { method: 'POST' }).finally(() => window.close());
+    }
+    document.getElementById('exit-btn').addEventListener('click', handleExit);
+    document.getElementById('exit-btn').addEventListener('touchend', handleExit);
+
+    // Prevent rubber-band scroll on touch except inside page scroll area
+    document.addEventListener('touchmove', (e) => {
+      if (pageView.classList.contains('show') && pageScroll.contains(e.target)) return;
+      e.preventDefault();
+    }, { passive: false });
+
+    // ===== WebSocket =====
     let ws, reconnectTimer;
-
     function connect() {
       ws = new WebSocket('ws://' + location.host);
 
       ws.onopen = () => { console.log('Connected'); clearTimeout(reconnectTimer); };
 
-      ws.onmessage = async (event) => {
+      ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
 
         if (data.type === 'crystal') {
-          document.body.classList.add('active');
-          hideAllViews();
-          resetPuzzle();
-          clearSideNav();
+          crystalActive = true;
+          currentSchool = data.school || null;
+          currentColor  = data.color  || null;
+          setAccentColor(currentColor);
           playCrystalChime();
 
-          currentColor = data.color;
-          crystalActive = true;
-
-          await loadSitesData();
-          currentSite = findCurrentSite();
-
-          // If hand is already on, go straight to scrying menu; otherwise show hand prompt
           if (handActive) {
-            setTimeout(() => showScryingMenu(), 500);
+            setTimeout(() => showCrossView(), 400);
           } else {
-            setTimeout(() => showHandPrompt(), 500);
+            setTimeout(() => showHandPrompt(), 400);
           }
 
         } else if (data.type === 'removed') {
           crystalActive = false;
-          handActive = false;
-          puzzleSolved = false;
-          currentView = 'idle';
-          currentColor = '';
-          hideAllViews();
-          resetPuzzle();
-          clearSideNav();
-          hideGlyphs();
-          document.body.classList.remove('active');
+          currentSchool = null;
+          currentColor  = null;
+          setAccentColor(null);
+          clearSchoolHighlight();
+          if (handActive) showPreviewView();
+          else            showHandPrompt();
 
         } else if (data.type === 'hand-on') {
           handActive = true;
-          if (crystalActive && currentView === 'hand') {
+          if (currentView === 'page') return; // don't interrupt a page
+          if (crystalActive) {
             playArcaneHum();
-            showScryingMenu();
+            showCrossView();
+          } else {
+            showPreviewView();
           }
 
         } else if (data.type === 'hand-off') {
           handActive = false;
-          if (crystalActive && currentView !== 'hand') {
-            showHandPrompt();
-          }
+          if (currentView === 'page') return; // don't interrupt a page
+          showHandPrompt();
+
+        } else if (data.type === 'reload') {
+          location.reload();
         }
       };
 
       ws.onclose = () => { console.log('Disconnected'); reconnectTimer = setTimeout(connect, 2000); };
       ws.onerror = () => ws.close();
     }
-
-    // ===================== EXIT =====================
-    function handleExit(e) {
-      e.stopPropagation(); e.preventDefault();
-      fetch('/exit', { method: 'POST' }).finally(() => window.close());
-    }
-    document.getElementById('exit-btn').addEventListener('touchend', handleExit);
-    document.getElementById('exit-btn').addEventListener('click', handleExit);
-
-    document.addEventListener('touchmove', function(e) {
-      if (contentView.classList.contains('show') && contentScroll.contains(e.target)) return;
-      e.preventDefault();
-    }, { passive: false });
-
+    // Handprint is the always-on default; reveal cover immediately and show it.
+    document.body.classList.add('active');
+    showHandPrompt();
     connect();
-    loadSitesData();
+
+    // Auto-register every font dropped into src/public/fonts/ (in addition to the
+    // static @font-face rules above) so GM-selected fonts work without code changes.
+    (async () => {
+      try {
+        const res = await fetch('/api/fonts', { cache: 'no-store' });
+        if (!res.ok) return;
+        const fonts = await res.json();
+        const css = fonts.map(f =>
+          "@font-face { font-family: '" + f.name + "'; font-display: swap; " +
+          "src: url('" + f.file + "') format('" + f.format + "'); }"
+        ).join('\n');
+        const style = document.createElement('style');
+        style.setAttribute('data-fonts', 'auto');
+        style.textContent = css;
+        document.head.appendChild(style);
+      } catch (_) { /* fonts list is best-effort */ }
+    })();
   </script>
 </body>
 </html>

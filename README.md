@@ -19,20 +19,16 @@ knoxrpg-netheril-prop/
 ├── stop.sh               # Stop server + Firefox
 ├── package.json
 ├── config/
-│   ├── config.yaml       # Crystal definitions (RFID hex, color, glyphs)
-│   ├── sites.json        # Thul site data (GM-managed)
-│   ├── pins.json         # Map pin data (GM-managed)
-│   ├── blue.md           # Story content per crystal color
-│   ├── green.md
-│   ├── purple.md
-│   ├── red.md
-│   └── translation.md    # Cuneiform translation reference
+│   ├── config.yaml       # Crystal definitions (RFID hex, colour, name)
+│   └── sites.json        # Legacy sites data (unused by player)
 ├── src/
 │   ├── server.js         # Express + WebSocket server
 │   ├── public/           # Player interface (port 3000)
-│   │   ├── index.html    # Main player UI
-│   │   ├── map.html      # World map view
-│   │   └── fonts/        # NotoSansCuneiform font
+│   │   ├── index.html    # Main player UI (hand prompt → 4-glyph cross → page view)
+│   │   ├── handprint.png
+│   │   ├── fonts/        # NotoSansCuneiform font
+│   │   ├── img/schools/  # 8 school-of-magic sigils (transparent PNG)
+│   │   └── pages/        # 32 markdown pages: <school>_<top|bottom|left|right>.md
 │   └── public-gm/        # GM console (port 3001)
 │       └── index.html    # GM management UI
 ├── dev/
@@ -73,7 +69,6 @@ export OPENAI_API_KEY="your-key-here"
 ```
 
 - **Player interface:** `http://localhost:3000`
-- **Player map:** `http://localhost:3000/map.html`
 - **GM console:** `http://localhost:3001`
 
 ### Run (Development — No Hardware)
@@ -92,26 +87,41 @@ Opens a simulator control panel at `http://localhost:3001/sim` to trigger crysta
 
 ## How It Works
 
-1. **Crystal placed on reader** — Screen transitions from black, shows a handprint prompt
-2. **Hand held over motion sensor** — Scrying menu appears (4 orbital orbs: Sites, Map, Research, Personnel)
-3. **Hand removed** — Returns to handprint prompt
-4. **Crystal removed** — Screen fades to black
+This prop is used in a massive dungeon-crawl one-shot to help players disable traps, open doors, and solve puzzles. Each crystal is tied to one of the eight D&D schools of magic.
+
+1. **Crystal placed on reader** — Screen reveals; the 8 school sigils on the side columns dim, and the school matching the crystal's colour glows. A handprint prompt appears in the centre.
+2. **Hand held over motion sensor** — The hand prompt is replaced by a 4-glyph cross. The centre of the cross shows the school of magic associated with the crystal; the four outer glyphs (top / bottom / left / right) are tappable buttons.
+3. **Tap a glyph** — The matching page (`src/public/pages/<school>_<location>.md`) is fetched and rendered. Tap the close glyph in the corner to return.
+4. **Hand removed** — Returns to the handprint prompt.
+5. **Crystal removed** — Screen fades to black.
 
 The GM console (port 3001) provides live management of:
-- **Crystals** — Add/edit RFID codes, colors, glyph ranges
-- **Sites** — Thul network locations with pages, research, personnel
-- **Map Pins** — Interactive map markers with descriptions
+- **Crystals** — Add/edit RFID codes, colours, names. School is derived automatically from colour.
 
-## LED Colors
+## Crystal → School → LED Colour
 
-| Crystal | LED Hex | Color |
-|---------|---------|-------|
-| Blue | `0x0000FF` | Blue |
-| Purple | `0x8000FF` | Purple |
-| Green | `0x00FF00` | Green |
-| Red | `0xFF0000` | Red |
-| Yellow | `0xFFFF00` | Yellow |
-| White | `0xFFFFFF` | White |
-| Orange | `0xFF8000` | Orange |
-| Pink | `0xFF0080` | Pink |
-| Cyan | `0x00FFFF` | Cyan |
+| Crystal Colour | School | LED Hex |
+|---|---|---|
+| White  | Abjuration    | `0xFFFFFF` |
+| Blue   | Conjuration   | `0x0000FF` |
+| Yellow | Divination    | `0xFFFF00` |
+| Pink   | Enchantment   | `0xFF0080` |
+| Red    | Evocation     | `0xFF0000` |
+| Orange | Illusion      | `0xFF8000` |
+| Black  | Necromancy    | `0x000000` (LED off) |
+| Green  | Transmutation | `0x00FF00` |
+
+## Page Content
+
+Each school has four placeholder pages — one per cross direction — in `src/public/pages/`:
+
+```
+<school>_top.md      # Origins
+<school>_bottom.md   # Foundations
+<school>_left.md     # Practices
+<school>_right.md    # Risks
+```
+
+Edit these markdown files (a subset of Markdown is supported: headings, paragraphs, bold, italic, lists, inline code) and they will be re-fetched on the next tap — no server restart needed.
+
+

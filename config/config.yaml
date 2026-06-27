@@ -1,79 +1,33 @@
 crystals:
   00000C0E:
     color: blue
-    name: ሇ2ሰBላ5
-    glyphStart: 73728
-    answer:
-      - 0
-      - 1
-      - 2
-      - 3
-      - 4
-      - 5
-      - 6
-      - 7
-  00000C07:
-    color: purple
-    name: ሇ4ሀ0ሱ3
-    glyphStart: 73856
-    answer:
-      - 0
-      - 1
-      - 2
-      - 3
-      - 4
-      - 5
-      - 6
-      - 7
+    school: conjuration
+    name: Kyber of Calling
   00000C04:
     color: green
-    name: ሑ1ሱDሂD
-    glyphStart: 73984
-    answer:
-      - 0
-      - 1
-      - 2
-      - 3
-      - 4
-      - 5
-      - 6
-      - 7
+    school: transmutation
+    name: Kyber of Shaping
   00000C09:
     color: red
-    name: ሩ1ሃ8ሱ1
-    glyphStart: 74112
-    answer:
-      - 0
-      - 1
-      - 2
-      - 3
-      - 4
-      - 5
-      - 6
-      - 7
+    school: evocation
+    name: Kyber of the Striking Hand
   11000C03:
     color: yellow
-    name: ሀ0ሴ5ሆ7
-    glyphStart: 73728
-    answer:
-      - 0
-      - 1
-      - 2
-      - 3
-      - 4
-      - 5
-      - 6
-      - 7
+    school: divination
+    name: Kyber of the Seeker's Eye
   11000C00:
     color: white
-    name: ''
-    glyphStart: 73728
-    answer:
-      - 0
-      - 1
-      - 2
-      - 3
-      - 4
-      - 5
-      - 6
-      - 7
+    school: abjuration
+    name: Kyber of Warding
+  00000C07:
+    color: pink
+    school: enchantment
+    name: Kyber of the Whispered Word
+  00000C0A:
+    color: orange
+    school: illusion
+    name: Kyber of the Painted Veil
+  11000C33:
+    color: black
+    school: necromancy
+    name: Kyber of the Final Door

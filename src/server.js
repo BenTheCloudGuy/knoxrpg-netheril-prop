@@ -24,9 +24,9 @@ const SERIAL_PATH = '/dev/serial0';
 const SERIAL_BAUD = 9600;
 const MOTION_SERIAL_PATH = process.env.MOTION_PORT || '/dev/ttyACM0';
 const MOTION_BAUD = 115200;
-const HAND_ON_THRESHOLD = 240;   // proximity must rise above this to trigger hand-on
-const HAND_OFF_THRESHOLD = 235;  // proximity must drop below this to trigger hand-off
-const HAND_TIMEOUT = 1500;       // ms below off-threshold before hand-off
+const HAND_ON_THRESHOLD = 230;   // proximity >= this = hand on
+const HAND_OFF_THRESHOLD = 200;  // proximity drops below this = hand off
+const HAND_TIMEOUT = 1000;       // ms below off-threshold before hand-off
 
 // --- RGB LED Ring ---
 const NUM_LEDS = 6;
@@ -47,16 +47,29 @@ if (!SIM_MODE) {
 
 const LED_COLORS = {
   blue:    0x0000FF,
-  purple:  0x8000FF,
   green:   0x00FF00,
   red:     0xFF0000,
   yellow:  0xFFFF00,
   white:   0xFFFFFF,
   orange:  0xFF8000,
   pink:    0xFF0080,
-  cyan:    0x00FFFF,
+  black:   0x000000,
   unknown: 0x333333,
 };
+
+// Each crystal colour maps 1:1 to a D&D school of magic.
+const COLOR_TO_SCHOOL = {
+  white:  'abjuration',
+  blue:   'conjuration',
+  yellow: 'divination',
+  pink:   'enchantment',
+  red:    'evocation',
+  orange: 'illusion',
+  black:  'necromancy',
+  green:  'transmutation',
+};
+const VALID_SCHOOLS = new Set(Object.values(COLOR_TO_SCHOOL));
+const VALID_LOCATIONS = new Set(['top', 'bottom', 'left', 'right']);
 
 function ledFill(color) {
   if (SIM_MODE) { console.log(`[SIM] LED fill: 0x${color.toString(16).padStart(6,'0')}`); return; }
@@ -67,6 +80,28 @@ function ledFill(color) {
 function ledOff() {
   if (SIM_MODE) { console.log('[SIM] LED off'); return; }
   ledFill(0x000000);
+}
+
+// --- Font discovery (scans src/public/fonts/) ---
+const FONTS_DIR = path.join(__dirname, 'public', 'fonts');
+const FONT_EXT_FORMAT = {
+  '.woff2': 'woff2',
+  '.woff':  'woff',
+  '.otf':   'opentype',
+  '.ttf':   'truetype',
+};
+function listFonts() {
+  let entries = [];
+  try { entries = fs.readdirSync(FONTS_DIR); } catch { return []; }
+  const out = [];
+  for (const file of entries) {
+    const ext = path.extname(file).toLowerCase();
+    if (!(ext in FONT_EXT_FORMAT)) continue;
+    const name = path.basename(file, ext);
+    out.push({ name, file: '/fonts/' + file, format: FONT_EXT_FORMAT[ext] });
+  }
+  out.sort((a, b) => a.name.localeCompare(b.name));
+  return out;
 }
 
 // --- Express + HTTP ---
@@ -90,17 +125,23 @@ app.post('/exit', (_req, res) => {
   setTimeout(() => process.exit(0), 500);
 });
 
-// --- Story endpoint ---
-const VALID_COLORS = ['blue', 'purple', 'green', 'red'];
-app.get('/story/:color', (req, res) => {
-  const color = req.params.color;
-  if (!VALID_COLORS.includes(color)) return res.status(404).send('Not found');
-  const filePath = path.join(CONFIG_DIR, `${color}.md`);
+// --- School-of-magic page endpoint ---
+// Serves /src/public/pages/<school>_<location>.md as plain markdown text.
+app.get('/api/page/:school/:location', (req, res) => {
+  const school = String(req.params.school || '').toLowerCase();
+  const location = String(req.params.location || '').toLowerCase();
+  if (!VALID_SCHOOLS.has(school) || !VALID_LOCATIONS.has(location)) {
+    return res.status(404).type('text/plain').send('Not found');
+  }
+  const filePath = path.join(__dirname, 'public', 'pages', `${school}_${location}.md`);
   fs.readFile(filePath, 'utf8', (err, data) => {
-    if (err) return res.status(404).send('Not found');
+    if (err) return res.status(404).type('text/plain').send('Not found');
     res.type('text/plain').send(data);
   });
 });
+
+// --- Font listing endpoint (shared between player + GM) ---
+app.get('/api/fonts', (_req, res) => res.json(listFonts()));
 
 // --- WebSocket ---
 const wss = new WebSocketServer({ server });
@@ -112,16 +153,7 @@ function broadcast(data) {
   });
 }
 
-// --- Kyber Crystal Color Map ---
-// Each crystal gets a unique block of 25 cuneiform characters for the 5x5 grid.
-// Plus an answer sequence (indices into that 25-glyph grid) the player must tap in order.
-// Returns an array of 25 consecutive Unicode cuneiform characters starting from `start`.
-function glyphBlock(start) {
-  const glyphs = [];
-  for (let i = 0; i < 25; i++) glyphs.push(String.fromCodePoint(start + i));
-  return glyphs;
-}
-
+// --- Kyber Crystal Map ---
 const CONFIG_FILE = path.join(CONFIG_DIR, 'config.yaml');
 
 function loadConfig() {
@@ -140,44 +172,26 @@ const CRYSTAL_MAP = {};
 function rebuildCrystalMap() {
   Object.keys(CRYSTAL_MAP).forEach(k => delete CRYSTAL_MAP[k]);
   for (const [hex, c] of Object.entries(config.crystals || {})) {
+    const color = String(c.color || 'unknown').toLowerCase();
+    const school = c.school || COLOR_TO_SCHOOL[color] || null;
     CRYSTAL_MAP[hex.toUpperCase()] = {
-      color: c.color,
-      name: c.name,
-      glyphs: glyphBlock(c.glyphStart),
-      answer: c.answer,
+      color,
+      school,
+      name: c.name || '',
     };
   }
 }
 rebuildCrystalMap();
 
-const UNKNOWN_GLYPHS = glyphBlock(0x12200);
-
 function lookupCrystal(tagHex) {
   const key = tagHex.toUpperCase();
-  return CRYSTAL_MAP[key] || { color: 'unknown', name: '\u{12263}\u{12263}\u{12263}', glyphs: UNKNOWN_GLYPHS, answer: [0,1,2,3,4,5,6,7] };
-}
-
-// Fisher-Yates shuffle: returns shuffled glyphs + remapped answer indices
-function shuffleForCrystal(info) {
-  const indices = info.glyphs.map((_, i) => i);
-  for (let i = indices.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [indices[i], indices[j]] = [indices[j], indices[i]];
-  }
-  const shuffledGlyphs = indices.map(i => info.glyphs[i]);
-  // reverseMap: originalPos -> newPos
-  const reverseMap = new Array(info.glyphs.length);
-  for (let n = 0; n < indices.length; n++) {
-    reverseMap[indices[n]] = n;
-  }
-  const shuffledAnswer = info.answer.map(i => reverseMap[i]);
-  return { glyphs: shuffledGlyphs, answer: shuffledAnswer };
+  return CRYSTAL_MAP[key] || { color: 'unknown', school: null, name: '' };
 }
 
 // --- RDM6300 RFID Reader ---
 let serialBuffer = '';
 let currentCrystal = null;
-let currentShuffled = null;
+let currentCrystalInfo = null;
 let lastSeenTime = 0;
 const CRYSTAL_TIMEOUT = 500; // ms before considering crystal removed
 
@@ -186,18 +200,19 @@ function simulateCrystalInsert(tagHex) {
   currentCrystal = tagId;
   lastSeenTime = Date.now();
   const info = lookupCrystal(tagHex);
-  const shuffled = shuffleForCrystal(info);
-  currentShuffled = shuffled;
-  console.log(`Crystal: ${info.color} (0x${tagHex})`);
-  ledFill(LED_COLORS[info.color] || LED_COLORS.unknown);
-  broadcast({ type: 'crystal', tagId, tagHex, color: info.color, name: info.name, glyphs: shuffled.glyphs, answer: shuffled.answer });
+  currentCrystalInfo = info;
+  console.log(`Crystal: ${info.color}/${info.school || '?'} (0x${tagHex})`);
+  const ledColor = (info.color in LED_COLORS) ? LED_COLORS[info.color] : LED_COLORS.unknown;
+  try { ledFill(ledColor); } catch (e) { console.error('ledFill failed:', e.message); }
+  broadcast({ type: 'crystal', tagId, tagHex, color: info.color, school: info.school, name: info.name });
 }
 
 function simulateCrystalRemove() {
   console.log('Crystal removed');
   currentCrystal = null;
-  currentShuffled = null;
-  ledOff();
+  currentCrystalInfo = null;
+  serialBuffer = ''; // discard any partial frame left over from the moment of removal
+  try { ledOff(); } catch (e) { console.error('ledOff failed:', e.message); }
   broadcast({ type: 'removed' });
 }
 
@@ -231,26 +246,41 @@ if (!SIM_MODE) {
   });
 
   serial.on('data', (chunk) => {
-    serialBuffer += chunk.toString('ascii');
+    // Use 'latin1' so all 256 byte values round-trip intact (ascii masks the high bit).
+    serialBuffer += chunk.toString('latin1');
+
+    // Cap buffer so noise without an STX can never grow unbounded.
+    if (serialBuffer.length > 256) {
+      serialBuffer = serialBuffer.substring(serialBuffer.length - 256);
+    }
 
     while (true) {
       const start = serialBuffer.indexOf('\x02');
-      const end = serialBuffer.indexOf('\x03');
-      if (start === -1 || end === -1 || end < start) {
-        if (start > 0) serialBuffer = serialBuffer.substring(start);
+      if (start === -1) {
+        // No frame start at all — drop everything so junk can't accumulate.
+        serialBuffer = '';
         break;
       }
+      if (start > 0) serialBuffer = serialBuffer.substring(start);
 
-      const message = serialBuffer.substring(start, end + 1);
-      serialBuffer = serialBuffer.substring(end + 1);
+      // A complete frame needs STX + 12 chars + ETX = 14 bytes.
+      if (serialBuffer.length < 14) break;
 
-      if (message.length === 14) {
-        const tag = parseRDM6300(message);
-        if (tag.valid) {
-          lastSeenTime = Date.now();
-          if (currentCrystal !== tag.tagId) {
-            simulateCrystalInsert(tag.tagHex);
-          }
+      // If the byte at position 13 isn't ETX, this frame is corrupt — discard
+      // just this STX and resync on the next one.
+      if (serialBuffer.charCodeAt(13) !== 0x03) {
+        serialBuffer = serialBuffer.substring(1);
+        continue;
+      }
+
+      const message = serialBuffer.substring(0, 14);
+      serialBuffer = serialBuffer.substring(14);
+
+      const tag = parseRDM6300(message);
+      if (tag.valid) {
+        lastSeenTime = Date.now();
+        if (currentCrystal !== tag.tagId) {
+          simulateCrystalInsert(tag.tagHex);
         }
       }
     }
@@ -266,9 +296,7 @@ if (!SIM_MODE) {
 
 // --- Kano Motion Sensor (USB CDC ACM) ---
 let handOn = false;
-let lastHighTime = 0;
-const proxBuffer = [];
-const PROX_WINDOW = 10;  // rolling average over 10 readings
+let lastDataTime = Date.now();
 
 function simulateHandOn() {
   if (!handOn) {
@@ -306,24 +334,31 @@ if (!SIM_MODE) {
         const obj = JSON.parse(trimmed);
         if (obj.name === 'proximity-data' && obj.detail) {
           const prox = obj.detail.proximity || 0;
-          proxBuffer.push(prox);
-          if (proxBuffer.length > PROX_WINDOW) proxBuffer.shift();
-          const avg = Math.round(proxBuffer.reduce((a, b) => a + b, 0) / proxBuffer.length);
-
-          if (!handOn && avg >= HAND_ON_THRESHOLD) {
-            lastHighTime = Date.now();
+          lastDataTime = Date.now();
+          // High proximity = hand approaching, trigger ON
+          if (prox >= HAND_ON_THRESHOLD) {
             simulateHandOn();
-          } else if (handOn && avg >= HAND_OFF_THRESHOLD) {
-            lastHighTime = Date.now();
           }
         }
-      } catch (_e) { /* ignore parse errors */ }
+      } catch (_e) { /* ignore */ }
     });
 
-    // Check for hand removal
+    // Hand stays ON while data is silent (sensor blocked by hand).
+    // Hand goes OFF when data resumes with low values for 1 second.
+    let lowSince = 0;
     setInterval(() => {
-      if (handOn && Date.now() - lastHighTime > HAND_TIMEOUT) {
-        simulateHandOff();
+      const silence = Date.now() - lastDataTime;
+      if (handOn) {
+        // If data is silent, hand is still covering — stay ON
+        if (silence > 500) return;
+        // Data is flowing again — track how long it's been low
+        if (!lowSince) lowSince = Date.now();
+        if (Date.now() - lowSince > HAND_TIMEOUT) {
+          simulateHandOff();
+          lowSince = 0;
+        }
+      } else {
+        lowSince = 0;
       }
     }, 100);
   } catch (err) {
@@ -333,13 +368,12 @@ if (!SIM_MODE) {
 
 // Send current state to newly connected clients
 wss.on('connection', (ws) => {
-  // Send hand state
   ws.send(JSON.stringify({ type: handOn ? 'hand-on' : 'hand-off' }));
 
-  if (currentCrystal !== null && currentShuffled) {
+  if (currentCrystal !== null && currentCrystalInfo) {
     const hex = currentCrystal.toString(16).padStart(8, '0').toUpperCase();
-    const info = lookupCrystal(hex);
-    ws.send(JSON.stringify({ type: 'crystal', tagId: currentCrystal, tagHex: hex, color: info.color, name: info.name, glyphs: currentShuffled.glyphs, answer: currentShuffled.answer }));
+    const info = currentCrystalInfo;
+    ws.send(JSON.stringify({ type: 'crystal', tagId: currentCrystal, tagHex: hex, color: info.color, school: info.school, name: info.name }));
   } else {
     ws.send(JSON.stringify({ type: 'removed' }));
   }
@@ -418,6 +452,17 @@ gmApp.use((_req, res, next) => {
   next();
 });
 gmApp.use(express.static(path.join(__dirname, 'public-gm')));
+// Make font assets available to the GM editor for previewing.
+gmApp.use('/fonts', express.static(path.join(__dirname, 'public', 'fonts')));
+
+// --- Font listing for GM editor ---
+gmApp.get('/api/fonts', (_req, res) => res.json(listFonts()));
+
+// --- Push a hard reload to every connected player display ---
+gmApp.post('/api/reload-player', (_req, res) => {
+  broadcast({ type: 'reload' });
+  res.json({ ok: true });
+});
 
 // --- GM Pin CRUD API ---
 gmApp.get('/api/pins', (_req, res) => {
@@ -436,21 +481,21 @@ function findCrystalKey(hexParam) {
 gmApp.get('/api/crystals', (_req, res) => {
   const crystals = config.crystals || {};
   const list = Object.entries(crystals).map(([hex, c]) => ({
-    hex, color: c.color, name: c.name, glyphStart: c.glyphStart, answer: c.answer,
+    hex, color: c.color, school: c.school || COLOR_TO_SCHOOL[c.color] || null, name: c.name,
   }));
   res.json(list);
 });
 
 gmApp.post('/api/crystals', (req, res) => {
-  const { hex, color, name, glyphStart, answer } = req.body;
+  const { hex, color, name } = req.body;
   if (!hex || !color) return res.status(400).json({ error: 'hex and color are required' });
   const key = String(hex).toUpperCase().replace(/^0X/, '');
+  const colorLc = String(color).slice(0, 50).toLowerCase();
   if (!config.crystals) config.crystals = {};
   config.crystals[key] = {
-    color: String(color).slice(0, 50),
-    name: String(name || '').slice(0, 50),
-    glyphStart: typeof glyphStart === 'number' ? glyphStart : 0x12000,
-    answer: Array.isArray(answer) ? answer : [0,1,2,3,4,5,6,7],
+    color: colorLc,
+    school: COLOR_TO_SCHOOL[colorLc] || null,
+    name: String(name || '').slice(0, 100),
   };
   saveConfig(config);
   rebuildCrystalMap();
@@ -460,11 +505,13 @@ gmApp.post('/api/crystals', (req, res) => {
 gmApp.put('/api/crystals/:hex', (req, res) => {
   const key = findCrystalKey(req.params.hex);
   if (!key) return res.status(404).json({ error: 'Crystal not found' });
-  const { color, name, glyphStart, answer } = req.body;
-  if (color !== undefined) config.crystals[key].color = String(color).slice(0, 50);
-  if (name !== undefined) config.crystals[key].name = String(name).slice(0, 50);
-  if (typeof glyphStart === 'number') config.crystals[key].glyphStart = glyphStart;
-  if (Array.isArray(answer)) config.crystals[key].answer = answer;
+  const { color, name } = req.body;
+  if (color !== undefined) {
+    const colorLc = String(color).slice(0, 50).toLowerCase();
+    config.crystals[key].color = colorLc;
+    config.crystals[key].school = COLOR_TO_SCHOOL[colorLc] || null;
+  }
+  if (name !== undefined) config.crystals[key].name = String(name).slice(0, 100);
   saveConfig(config);
   rebuildCrystalMap();
   res.json({ hex: key, ...config.crystals[key] });
@@ -477,6 +524,57 @@ gmApp.delete('/api/crystals/:hex', (req, res) => {
   saveConfig(config);
   rebuildCrystalMap();
   res.json({ ok: true });
+});
+
+// --- GM School Pages CRUD (markdown files under public/pages/) ---
+const SCHOOL_PAGES_DIR = path.join(__dirname, 'public', 'pages');
+
+gmApp.get('/api/school-pages', (_req, res) => {
+  const list = [];
+  for (const school of VALID_SCHOOLS) {
+    for (const location of VALID_LOCATIONS) {
+      const fp = path.join(SCHOOL_PAGES_DIR, `${school}_${location}.md`);
+      let exists = false, size = 0, title = '';
+      try {
+        const st = fs.statSync(fp);
+        exists = true; size = st.size;
+        const data = fs.readFileSync(fp, 'utf8');
+        const m = data.match(/^#\s+(.+)$/m);
+        if (m) title = m[1].trim();
+      } catch { /* missing */ }
+      list.push({ school, location, exists, size, title });
+    }
+  }
+  res.json(list);
+});
+
+gmApp.get('/api/school-pages/:school/:location', (req, res) => {
+  const school = String(req.params.school || '').toLowerCase();
+  const location = String(req.params.location || '').toLowerCase();
+  if (!VALID_SCHOOLS.has(school) || !VALID_LOCATIONS.has(location)) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  const fp = path.join(SCHOOL_PAGES_DIR, `${school}_${location}.md`);
+  fs.readFile(fp, 'utf8', (err, data) => {
+    res.json({ school, location, content: err ? '' : data });
+  });
+});
+
+gmApp.put('/api/school-pages/:school/:location', (req, res) => {
+  const school = String(req.params.school || '').toLowerCase();
+  const location = String(req.params.location || '').toLowerCase();
+  if (!VALID_SCHOOLS.has(school) || !VALID_LOCATIONS.has(location)) {
+    return res.status(404).json({ error: 'Not found' });
+  }
+  const content = String((req.body && req.body.content) || '').slice(0, 50000);
+  const fp = path.join(SCHOOL_PAGES_DIR, `${school}_${location}.md`);
+  try {
+    fs.mkdirSync(SCHOOL_PAGES_DIR, { recursive: true });
+    fs.writeFileSync(fp, content, 'utf8');
+    res.json({ ok: true, school, location, size: Buffer.byteLength(content, 'utf8') });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // --- GM Sites CRUD API ---
@@ -583,23 +681,6 @@ gmApp.delete('/api/pins/:id', (req, res) => {
 const { execSync } = require('child_process');
 const { spawn } = require('child_process');
 
-// --- GM map image upload ---
-const MAP_FILE = 'faerunu_blank.jpg';
-const MAP_IMG_PATH = path.join(__dirname, 'public', MAP_FILE);
-const GM_MAP_IMG_PATH = path.join(__dirname, 'public-gm', MAP_FILE);
-
-gmApp.post('/api/map-upload', (req, res) => {
-  const chunks = [];
-  req.on('data', chunk => chunks.push(chunk));
-  req.on('end', () => {
-    const buf = Buffer.concat(chunks);
-    if (buf.length > 20 * 1024 * 1024) return res.status(413).json({ error: 'Max 20MB' });
-    fs.writeFileSync(MAP_IMG_PATH, buf);
-    fs.writeFileSync(GM_MAP_IMG_PATH, buf);
-    res.json({ ok: true });
-  });
-});
-
 // --- GM Git Update API (SSE stream) ---
 gmApp.get('/api/update', (req, res) => {
   res.writeHead(200, {
@@ -667,6 +748,20 @@ gmApp.post('/api/restart', (_req, res) => {
     } catch (_e) { /* ignore */ }
     process.exit(0);
   }, 2000);
+});
+
+gmApp.post('/api/reboot', (_req, res) => {
+  res.json({ ok: true, text: 'Rebooting Pi in 3 seconds...' });
+  setTimeout(() => {
+    try { execSync('reboot'); } catch (_e) { /* ignore */ }
+  }, 3000);
+});
+
+gmApp.post('/api/shutdown', (_req, res) => {
+  res.json({ ok: true, text: 'Shutting down Pi in 3 seconds...' });
+  setTimeout(() => {
+    try { execSync('shutdown -h now'); } catch (_e) { /* ignore */ }
+  }, 3000);
 });
 
 // --- GM Live Logs (SSE stream of journalctl) ---
@@ -749,12 +844,9 @@ server.listen(PORT, () => {
     console.log(`RGB LED Ring: ${NUM_LEDS} LEDs on GPIO ${LED_GPIO} (Pin 12)`);
   }
   console.log('');
-  console.log('=== Answer Sequences ===');
+  console.log('=== Crystal → School Map ===');
   for (const [hex, crystal] of Object.entries(CRYSTAL_MAP)) {
-    const glyphs = crystal.glyphs;
-    const seq = crystal.answer.map((idx, step) => `  ${step + 1}. [${String(idx + 1).padStart(2, '0')}] ${glyphs[idx]}`).join('\n');
-    console.log(`\n${crystal.color.toUpperCase()} (0x${hex}):`);
-    console.log(seq);
+    console.log(`  0x${hex}  ${crystal.color.padEnd(8)} → ${crystal.school || '(none)'}  ${crystal.name}`);
   }
   console.log('');
 });

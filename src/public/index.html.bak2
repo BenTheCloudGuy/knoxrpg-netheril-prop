@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0">
+  <title>Netheril</title>
+  <style>
+    @font-face {
+      font-family: 'Cuneiform';
+      src: url('/fonts/NotoSansCuneiform-Regular.ttf');
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      font-family: 'Cuneiform', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+      -ms-touch-action: none;
+      margin: 0; padding: 0;
+    }
+
+    body {
+      background:
+        repeating-conic-gradient(rgba(0,0,0,0.02) 0% 25%, transparent 0% 50%) 0 0 / 4px 4px,
+        radial-gradient(ellipse at 30% 20%, #c4a87a, transparent 60%),
+        radial-gradient(ellipse at 70% 80%, #a08055, transparent 60%),
+        linear-gradient(160deg, #b89968 0%, #a0824e 30%, #8b6f3c 60%, #a08050 100%);
+      background-color: #9a7b4a;
+    }
+
+    @property --cover {
+      syntax: '<percentage>';
+      initial-value: 120%;
+      inherits: false;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: #000;
+      z-index: 999;
+      pointer-events: none;
+      --cover: 120%;
+      -webkit-mask-image: radial-gradient(ellipse 135% 118% at 50% 50%, black var(--cover), transparent calc(var(--cover) + 20%));
+      mask-image: radial-gradient(ellipse 135% 118% at 50% 50%, black var(--cover), transparent calc(var(--cover) + 20%));
+      transition: --cover 2.8s cubic-bezier(0.4, 0, 0.15, 1);
+    }
+    body.active::after {
+      --cover: -25%;
+    }
+
+    /* ===================== LAYOUT ===================== */
+    #app {
+      width: 1920px; height: 1080px;
+      display: flex;
+    }
+    .side-col {
+      width: 384px; height: 1080px;
+      display: flex; flex-direction: column;
+    }
+    .side-block {
+      flex: 1;
+      display: flex; align-items: center; justify-content: center;
+      border: 1px solid rgba(0,0,0,0.08);
+      position: relative; cursor: pointer;
+    }
+    .side-block .side-glyph {
+      font-family: 'Cuneiform', sans-serif;
+      font-size: 120px;
+      color: transparent;
+      transition: color 0.8s ease, text-shadow 0.8s ease;
+    }
+    .side-block.activated .side-glyph {
+      color: rgba(60, 42, 20, 0.9);
+      text-shadow: 2px 2px 0px rgba(200,180,140,0.7), -2px -2px 0px rgba(40,25,10,0.5), 0 0 15px rgba(196,165,90,0.4);
+    }
+    .side-block.activated.blue .side-glyph { text-shadow: 2px 2px 0px rgba(200,180,140,0.7), -2px -2px 0px rgba(40,25,10,0.5), 0 0 20px rgba(79,195,247,0.5); }
+    .side-block.activated.purple .side-glyph { text-shadow: 2px 2px 0px rgba(200,180,140,0.7), -2px -2px 0px rgba(40,25,10,0.5), 0 0 20px rgba(206,147,216,0.5); }
+    .side-block.activated.green .side-glyph { text-shadow: 2px 2px 0px rgba(200,180,140,0.7), -2px -2px 0px rgba(40,25,10,0.5), 0 0 20px rgba(129,199,132,0.5); }
+    .side-block.activated.red .side-glyph { text-shadow: 2px 2px 0px rgba(200,180,140,0.7), -2px -2px 0px rgba(40,25,10,0.5), 0 0 20px rgba(239,83,80,0.5); }
+    .side-block.wrong .side-glyph { color: rgba(180,40,30,0.8); text-shadow: 0 0 30px rgba(239,83,80,0.8); }
+
+    #center-col {
+      width: 1152px; height: 1080px;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+    }
+
+    /* ===================== PUZZLE GRID ===================== */
+    #glyph-grid {
+      display: grid;
+      grid-template-columns: repeat(5,1fr); grid-template-rows: repeat(5,1fr);
+      width: 1040px; height: 1040px;
+      opacity: 0; transition: opacity 1s ease;
+    }
+    #glyph-grid.active { opacity: 1; }
+    .glyph-cell {
+      display: flex; align-items: center; justify-content: center;
+      font-family: 'Cuneiform', sans-serif; font-size: 96px; line-height: 1;
+      color: transparent;
+      transition: color 0.6s ease, text-shadow 0.6s ease;
+      border: 1px solid rgba(0,0,0,0.04); border-radius: 4px;
+    }
+    .glyph-cell.carved {
+      color: rgba(60,42,20,0.85);
+      text-shadow: 1px 1px 0px rgba(200,180,140,0.6), -1px -1px 0px rgba(40,25,10,0.4), 0 0 2px rgba(80,55,25,0.3);
+    }
+    .glyph-cell.carved:active {
+      color: rgba(40,28,12,1);
+      text-shadow: 1px 1px 0px rgba(220,200,160,0.8), -1px -1px 0px rgba(30,18,5,0.6), 0 0 6px rgba(196,165,90,0.4);
+    }
+    .glyph-cell.used {
+      color: rgba(196,165,90,1);
+      text-shadow: 0 0 10px rgba(196,165,90,0.8), 0 0 25px rgba(196,165,90,0.5), 0 0 40px rgba(196,165,90,0.3);
+      pointer-events: none;
+    }
+    #glyph-grid.blue .glyph-cell.used { color: rgba(79,195,247,1); text-shadow: 0 0 10px rgba(79,195,247,0.8), 0 0 25px rgba(79,195,247,0.5), 0 0 40px rgba(79,195,247,0.3); }
+    #glyph-grid.purple .glyph-cell.used { color: rgba(206,147,216,1); text-shadow: 0 0 10px rgba(206,147,216,0.8), 0 0 25px rgba(206,147,216,0.5), 0 0 40px rgba(206,147,216,0.3); }
+    #glyph-grid.green .glyph-cell.used { color: rgba(129,199,132,1); text-shadow: 0 0 10px rgba(129,199,132,0.8), 0 0 25px rgba(129,199,132,0.5), 0 0 40px rgba(129,199,132,0.3); }
+    #glyph-grid.red .glyph-cell.used { color: rgba(239,83,80,1); text-shadow: 0 0 10px rgba(239,83,80,0.8), 0 0 25px rgba(239,83,80,0.5), 0 0 40px rgba(239,83,80,0.3); }
+    #glyph-grid.blue .glyph-cell.carved { text-shadow: 1px 1px 0px rgba(200,180,140,0.6), -1px -1px 0px rgba(40,25,10,0.4), 0 0 8px rgba(79,195,247,0.15); }
+    #glyph-grid.purple .glyph-cell.carved { text-shadow: 1px 1px 0px rgba(200,180,140,0.6), -1px -1px 0px rgba(40,25,10,0.4), 0 0 8px rgba(206,147,216,0.15); }
+    #glyph-grid.green .glyph-cell.carved { text-shadow: 1px 1px 0px rgba(200,180,140,0.6), -1px -1px 0px rgba(40,25,10,0.4), 0 0 8px rgba(129,199,132,0.15); }
+    #glyph-grid.red .glyph-cell.carved { text-shadow: 1px 1px 0px rgba(200,180,140,0.6), -1px -1px 0px rgba(40,25,10,0.4), 0 0 8px rgba(239,83,80,0.15); }
+
+    /* ===================== SCRYING MENU ===================== */
+    #scrying-menu {
+      display: none;
+      position: absolute; inset: 0;
+      align-items: center; justify-content: center;
+      z-index: 20;
+    }
+    #scrying-menu.show { display: flex; }
+
+    .scry-container {
+      position: relative;
+      width: 800px; height: 800px;
+    }
+
+    .scry-center {
+      position: absolute;
+      left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      width: 280px; height: 280px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      border: 3px solid rgba(196,165,90,0.3);
+      background: radial-gradient(circle, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.02) 100%);
+      animation: scry-pulse 3s ease-in-out infinite;
+    }
+    .scry-center .scry-glyph {
+      font-family: 'Cuneiform', sans-serif;
+      font-size: 100px;
+      color: rgba(60,42,20,0.9);
+      text-shadow: 2px 2px 0px rgba(200,180,140,0.7), -2px -2px 0px rgba(40,25,10,0.5), 0 0 20px rgba(196,165,90,0.4);
+    }
+
+    @keyframes scry-pulse {
+      0%, 100% { border-color: rgba(196,165,90,0.3); box-shadow: 0 0 20px rgba(196,165,90,0.1); }
+      50% { border-color: rgba(196,165,90,0.6); box-shadow: 0 0 40px rgba(196,165,90,0.25); }
+    }
+
+    .scry-orb {
+      position: absolute;
+      width: 160px; height: 160px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      border: 2px solid rgba(196,165,90,0.25);
+      background: radial-gradient(circle, rgba(0,0,0,0.06) 0%, transparent 100%);
+      cursor: pointer;
+      transition: border-color 0.3s, box-shadow 0.3s, transform 0.2s;
+    }
+    .scry-orb:active { transform: scale(0.92); }
+    .scry-orb:hover, .scry-orb.active {
+      border-color: rgba(196,165,90,0.7);
+      box-shadow: 0 0 30px rgba(196,165,90,0.3);
+    }
+    .scry-orb .scry-glyph {
+      font-family: 'Cuneiform', sans-serif;
+      font-size: 72px;
+      color: rgba(60,42,20,0.85);
+      text-shadow: 1px 1px 0px rgba(200,180,140,0.6), -1px -1px 0px rgba(40,25,10,0.4), 0 0 10px rgba(196,165,90,0.3);
+    }
+
+    /* Color tinting */
+    .scrying-color-green .scry-center { border-color: rgba(129,199,132,0.3); animation-name: scry-pulse-green; }
+    .scrying-color-green .scry-center .scry-glyph { text-shadow: 2px 2px 0 rgba(200,180,140,0.7), -2px -2px 0 rgba(40,25,10,0.5), 0 0 20px rgba(129,199,132,0.4); }
+    .scrying-color-green .scry-orb:hover, .scrying-color-green .scry-orb.active { border-color: rgba(129,199,132,0.7); box-shadow: 0 0 30px rgba(129,199,132,0.3); }
+    @keyframes scry-pulse-green {
+      0%, 100% { border-color: rgba(129,199,132,0.3); box-shadow: 0 0 20px rgba(129,199,132,0.1); }
+      50% { border-color: rgba(129,199,132,0.6); box-shadow: 0 0 40px rgba(129,199,132,0.25); }
+    }
+    .scrying-color-blue .scry-center { border-color: rgba(79,195,247,0.3); animation-name: scry-pulse-blue; }
+    .scrying-color-blue .scry-center .scry-glyph { text-shadow: 2px 2px 0 rgba(200,180,140,0.7), -2px -2px 0 rgba(40,25,10,0.5), 0 0 20px rgba(79,195,247,0.4); }
+    .scrying-color-blue .scry-orb:hover, .scrying-color-blue .scry-orb.active { border-color: rgba(79,195,247,0.7); box-shadow: 0 0 30px rgba(79,195,247,0.3); }
+    @keyframes scry-pulse-blue {
+      0%, 100% { border-color: rgba(79,195,247,0.3); box-shadow: 0 0 20px rgba(79,195,247,0.1); }
+      50% { border-color: rgba(79,195,247,0.6); box-shadow: 0 0 40px rgba(79,195,247,0.25); }
+    }
+    .scrying-color-purple .scry-center { border-color: rgba(206,147,216,0.3); animation-name: scry-pulse-purple; }
+    .scrying-color-purple .scry-center .scry-glyph { text-shadow: 2px 2px 0 rgba(200,180,140,0.7), -2px -2px 0 rgba(40,25,10,0.5), 0 0 20px rgba(206,147,216,0.4); }
+    .scrying-color-purple .scry-orb:hover, .scrying-color-purple .scry-orb.active { border-color: rgba(206,147,216,0.7); box-shadow: 0 0 30px rgba(206,147,216,0.3); }
+    @keyframes scry-pulse-purple {
+      0%, 100% { border-color: rgba(206,147,216,0.3); box-shadow: 0 0 20px rgba(206,147,216,0.1); }
+      50% { border-color: rgba(206,147,216,0.6); box-shadow: 0 0 40px rgba(206,147,216,0.25); }
+    }
+    .scrying-color-red .scry-center { border-color: rgba(239,83,80,0.3); animation-name: scry-pulse-red; }
+    .scrying-color-red .scry-center .scry-glyph { text-shadow: 2px 2px 0 rgba(200,180,140,0.7), -2px -2px 0 rgba(40,25,10,0.5), 0 0 20px rgba(239,83,80,0.4); }
+    .scrying-color-red .scry-orb:hover, .scrying-color-red .scry-orb.active { border-color: rgba(239,83,80,0.7); box-shadow: 0 0 30px rgba(239,83,80,0.3); }
+    @keyframes scry-pulse-red {
+      0%, 100% { border-color: rgba(239,83,80,0.3); box-shadow: 0 0 20px rgba(239,83,80,0.1); }
+      50% { border-color: rgba(239,83,80,0.6); box-shadow: 0 0 40px rgba(239,83,80,0.25); }
+    }
+
+    /* Orb positions: top, right, bottom, left */
+    .scry-orb-top    { left: 50%; top: 0;    transform: translate(-50%, 0); }
+    .scry-orb-right  { right: 0;  top: 50%;  transform: translate(0, -50%); }
+    .scry-orb-bottom { left: 50%; bottom: 0; transform: translate(-50%, 0); }
+    .scry-orb-left   { left: 0;   top: 50%;  transform: translate(0, -50%); }
+    .scry-orb-top:active    { transform: translate(-50%, 0) scale(0.92); }
+    .scry-orb-right:active  { transform: translate(0, -50%) scale(0.92); }
+    .scry-orb-bottom:active { transform: translate(-50%, 0) scale(0.92); }
+    .scry-orb-left:active   { transform: translate(0, -50%) scale(0.92); }
+
+    /* ===================== CONTENT VIEW ===================== */
+    #content-view {
+      display: none;
+      position: absolute; inset: 0;
+      flex-direction: column;
+      align-items: center; justify-content: center;
+      z-index: 25;
+      padding: 20px;
+    }
+    #content-view.show { display: flex; }
+
+    #content-scroll {
+      width: 100%; max-width: 1040px;
+      height: 100%; max-height: 920px;
+      overflow-y: auto; overflow-x: hidden;
+      -webkit-overflow-scrolling: touch;
+      padding: 32px;
+      border: 1px solid rgba(0,0,0,0.14);
+      background: rgba(0,0,0,0.06);
+      border-radius: 8px;
+    }
+    #content-text {
+      font-family: 'Cuneiform', sans-serif;
+      font-size: 38px; line-height: 1.4;
+      color: rgba(60,42,20,0.9);
+      text-shadow: 1px 1px 0px rgba(200,180,140,0.6), -1px -1px 0px rgba(40,25,10,0.4);
+      white-space: pre-wrap;
+    }
+    #content-title {
+      font-family: 'Cuneiform', sans-serif;
+      font-size: 52px;
+      color: rgba(60,42,20,0.95);
+      text-shadow: 2px 2px 0px rgba(200,180,140,0.7), -2px -2px 0px rgba(40,25,10,0.5), 0 0 15px rgba(196,165,90,0.4);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    #content-view.green #content-text { color: rgba(129,199,132,1); text-shadow: 0 0 10px rgba(129,199,132,0.4); }
+    #content-view.green #content-title { color: rgba(129,199,132,1); text-shadow: 0 0 15px rgba(129,199,132,0.5); }
+    #content-view.blue #content-text { color: rgba(79,195,247,1); text-shadow: 0 0 10px rgba(79,195,247,0.4); }
+    #content-view.blue #content-title { color: rgba(79,195,247,1); text-shadow: 0 0 15px rgba(79,195,247,0.5); }
+    #content-view.purple #content-text { color: rgba(206,147,216,1); text-shadow: 0 0 10px rgba(206,147,216,0.4); }
+    #content-view.purple #content-title { color: rgba(206,147,216,1); text-shadow: 0 0 15px rgba(206,147,216,0.5); }
+    #content-view.red #content-text { color: rgba(239,83,80,1); text-shadow: 0 0 10px rgba(239,83,80,0.4); }
+    #content-view.red #content-title { color: rgba(239,83,80,1); text-shadow: 0 0 15px rgba(239,83,80,0.5); }
+
+    /* ===================== SITES MAP VIEW ===================== */
+    #sites-map-view {
+      display: none;
+      position: absolute; inset: 0;
+      align-items: center; justify-content: center;
+      z-index: 25;
+    }
+    #sites-map-view.show { display: flex; }
+
+    #sites-map-container {
+      position: relative;
+      width: 1100px; height: 1020px;
+    }
+    #sites-map-img {
+      width: 100%; height: 100%;
+      object-fit: contain;
+      border-radius: 8px;
+      border: 2px solid rgba(196,165,90,0.2);
+      filter: sepia(0.15) brightness(0.95);
+    }
+    .site-pin {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      z-index: 10;
+      text-align: center;
+    }
+    .site-pin-glyph {
+      font-family: 'Cuneiform', sans-serif;
+      font-size: 42px;
+      display: flex; align-items: center; justify-content: center;
+      width: 64px; height: 64px;
+      border-radius: 50%;
+      border: 2px solid rgba(196,165,90,0.5);
+      background: radial-gradient(circle, rgba(154,123,74,0.9) 0%, rgba(139,111,60,0.95) 100%);
+      color: rgba(60,42,20,0.9);
+      text-shadow: 1px 1px 0 rgba(200,180,140,0.6), -1px -1px 0 rgba(40,25,10,0.4), 0 0 8px rgba(196,165,90,0.3);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .site-pin:active .site-pin-glyph { transform: scale(0.9); }
+    .site-pin:hover .site-pin-glyph {
+      box-shadow: 0 0 20px rgba(196,165,90,0.5);
+      border-color: rgba(196,165,90,0.8);
+    }
+    .site-pin-label {
+      font-family: -apple-system, sans-serif;
+      font-size: 12px;
+      color: rgba(196,165,90,0.8);
+      margin-top: 4px;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.8);
+      white-space: nowrap;
+    }
+
+    /* ===================== SHARED ===================== */
+    @keyframes pulse-glow {
+      0%, 100% { text-shadow: 0 0 40px rgba(196,165,90,0.8), 0 0 80px rgba(196,165,90,0.4); }
+      50% { text-shadow: 0 0 60px rgba(196,165,90,1), 0 0 120px rgba(196,165,90,0.7); }
+    }
+
+    @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+    .fade-in { animation: fade-in 0.8s ease forwards; }
+
+    #exit-btn {
+      position: fixed; top: 8px; right: 12px;
+      font-family: 'Cuneiform', sans-serif; font-size: 0.8rem;
+      color: rgba(60,42,20,0.3); background: none; border: none;
+      cursor: pointer; padding: 6px 10px; z-index: 100;
+    }
+    #exit-btn:active { color: #ef5350; }
+
+    /* ===================== HAND PROMPT ===================== */
+    #hand-prompt {
+      display: none;
+      position: absolute; inset: 0;
+      align-items: center; justify-content: center;
+      z-index: 30;
+    }
+    #hand-prompt.show { display: flex; }
+
+    .hand-layout {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 60px;
+      width: 100%;
+    }
+    .hand-glyphs {
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+      align-items: center;
+    }
+    .hand-glyphs .hg {
+      font-family: 'Cuneiform', sans-serif;
+      font-size: 72px;
+      color: rgba(60,42,20,0.5);
+      text-shadow: 1px 1px 0 rgba(200,180,140,0.4), -1px -1px 0 rgba(40,25,10,0.3);
+      opacity: 0;
+      animation: glyph-fade-in 1.2s ease forwards;
+    }
+    .hand-glyphs .hg:nth-child(1) { animation-delay: 0.3s; }
+    .hand-glyphs .hg:nth-child(2) { animation-delay: 0.6s; }
+    .hand-glyphs .hg:nth-child(3) { animation-delay: 0.9s; }
+    .hand-glyphs .hg:nth-child(4) { animation-delay: 1.2s; }
+
+    @keyframes glyph-fade-in {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .hand-icon {
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .hand-img {
+      height: 810px;
+      width: auto;
+      opacity: 0.8;
+      filter: drop-shadow(0 0 30px rgba(196,165,90,0.3));
+      animation: hand-pulse 3s ease-in-out infinite;
+    }
+
+    @keyframes hand-pulse {
+      0%, 100% { filter: drop-shadow(0 0 15px rgba(196,165,90,0.15)); opacity: 0.65; }
+      50%      { filter: drop-shadow(0 0 40px rgba(196,165,90,0.5)); opacity: 0.9; }
+    }
+
+    /* Color tinting for hand prompt */
+    #hand-prompt.blue .hand-img { filter: drop-shadow(0 0 30px rgba(79,195,247,0.4)); }
+    #hand-prompt.blue .hand-glyphs .hg { color: rgba(79,195,247,0.5); }
+    #hand-prompt.purple .hand-img { filter: drop-shadow(0 0 30px rgba(206,147,216,0.4)); }
+    #hand-prompt.purple .hand-glyphs .hg { color: rgba(206,147,216,0.5); }
+    #hand-prompt.green .hand-img { filter: drop-shadow(0 0 30px rgba(129,199,132,0.4)); }
+    #hand-prompt.green .hand-glyphs .hg { color: rgba(129,199,132,0.5); }
+    #hand-prompt.red .hand-img { filter: drop-shadow(0 0 30px rgba(239,83,80,0.4)); }
+    #hand-prompt.red .hand-glyphs .hg { color: rgba(239,83,80,0.5); }
+  </style>
+</head>
+<body>
+  <button id="exit-btn">[EXIT]</button>
+
+  <div id="app">
+    <div class="side-col" id="left-col">
+      <div class="side-block" id="box-A"><span class="side-glyph"></span></div>
+      <div class="side-block" id="box-B"><span class="side-glyph"></span></div>
+      <div class="side-block" id="box-C"><span class="side-glyph"></span></div>
+      <div class="side-block" id="box-D"><span class="side-glyph"></span></div>
+    </div>
+
+    <div id="center-col">
+      <div id="glyph-grid"></div>
+
+      <div id="scrying-menu">
+        <div class="scry-container" id="scry-container">
+          <div class="scry-center"><span class="scry-glyph">𒅆𒋗</span></div>
+          <div class="scry-orb scry-orb-top" data-menu="sites"><span class="scry-glyph">𒌷</span></div>
+          <div class="scry-orb scry-orb-right" data-menu="map"><span class="scry-glyph">𒆠</span></div>
+          <div class="scry-orb scry-orb-bottom" data-menu="research"><span class="scry-glyph">𒉆</span></div>
+          <div class="scry-orb scry-orb-left" data-menu="personnel"><span class="scry-glyph">𒇽</span></div>
+        </div>
+      </div>
+
+      <div id="sites-map-view">
+        <div id="sites-map-container">
+          <img id="sites-map-img" src="/faerunu_blank.jpg">
+        </div>
+      </div>
+
+      <div id="content-view">
+        <div id="content-title"></div>
+        <div id="content-scroll">
+          <div id="content-text"></div>
+        </div>
+      </div>
+
+      <div id="hand-prompt">
+        <div class="hand-layout">
+          <div class="hand-glyphs">
+            <span class="hg">𒀭</span>
+            <span class="hg">𒌓</span>
+            <span class="hg">𒁹</span>
+            <span class="hg">𒂗</span>
+          </div>
+          <div class="hand-icon">
+            <img class="hand-img" src="/handprint.png" alt="">
+          </div>
+          <div class="hand-glyphs">
+            <span class="hg">𒅆</span>
+            <span class="hg">𒋗</span>
+            <span class="hg">𒌷</span>
+            <span class="hg">𒉆</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="side-col" id="right-col">
+      <div class="side-block" id="box-E"><span class="side-glyph"></span></div>
+      <div class="side-block" id="box-F"><span class="side-glyph"></span></div>
+      <div class="side-block" id="box-G"><span class="side-glyph"></span></div>
+      <div class="side-block" id="box-H"><span class="side-glyph"></span></div>
+    </div>
+  </div>
+
+  <script>
+    // ===================== ELEMENTS =====================
+    const grid = document.getElementById('glyph-grid');
+    const scryingMenu = document.getElementById('scrying-menu');
+    const scryContainer = document.getElementById('scry-container');
+    const sitesMapView = document.getElementById('sites-map-view');
+    const sitesMapContainer = document.getElementById('sites-map-container');
+    const contentView = document.getElementById('content-view');
+    const contentTitle = document.getElementById('content-title');
+    const contentScroll = document.getElementById('content-scroll');
+    const contentText = document.getElementById('content-text');
+    const handPrompt = document.getElementById('hand-prompt');
+
+    const colorClasses = ['blue', 'purple', 'green', 'red', 'unknown'];
+    const sideBoxIds = ['box-A','box-B','box-C','box-D','box-E','box-F','box-G','box-H'];
+    const sideBoxes = sideBoxIds.map(id => document.getElementById(id));
+    const cells = [];
+
+    // ===================== SOUND EFFECTS =====================
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    function playStoneGrind() {
+      const duration = 0.15, bufferSize = audioCtx.sampleRate * duration;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        const t = i / bufferSize;
+        data[i] = (Math.random()*2-1)*(1-t)*0.4*Math.sin(t*80)*(1+Math.sin(t*300)*0.3);
+      }
+      const src = audioCtx.createBufferSource(); src.buffer = buffer;
+      const lp = audioCtx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=800; lp.Q.value=1.5;
+      src.connect(lp).connect(audioCtx.destination); src.start();
+    }
+
+    function playArcaneHum() {
+      const now = audioCtx.currentTime, dur = 2.5;
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.25, now); gain.gain.exponentialRampToValueAtTime(0.01, now+dur);
+      gain.connect(audioCtx.destination);
+      [110,165,220,330].forEach(f => { const o=audioCtx.createOscillator(); o.type='sine'; o.frequency.value=f; o.connect(gain); o.start(now); o.stop(now+dur); });
+    }
+
+    function playRumble() {
+      const duration = 0.5, bufferSize = audioCtx.sampleRate * duration;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) { const t=i/bufferSize; data[i]=(Math.random()*2-1)*(1-t*t)*0.5; }
+      const src = audioCtx.createBufferSource(); src.buffer = buffer;
+      const lp = audioCtx.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=200;
+      src.connect(lp).connect(audioCtx.destination); src.start();
+    }
+
+    function playCrystalChime() {
+      const now = audioCtx.currentTime;
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.001, now+1.2);
+      gain.connect(audioCtx.destination);
+      [523,659,784].forEach((f,i) => { const o=audioCtx.createOscillator(); o.type='triangle'; o.frequency.value=f; o.connect(gain); o.start(now+i*0.1); o.stop(now+1.2); });
+    }
+
+    function playOrbSelect() {
+      const now = audioCtx.currentTime;
+      const gain = audioCtx.createGain();
+      gain.gain.setValueAtTime(0.15, now); gain.gain.exponentialRampToValueAtTime(0.001, now+0.6);
+      gain.connect(audioCtx.destination);
+      const o = audioCtx.createOscillator(); o.type='sine'; o.frequency.value=440;
+      o.frequency.exponentialRampToValueAtTime(880, now+0.3);
+      o.connect(gain); o.start(now); o.stop(now+0.6);
+    }
+
+    document.addEventListener('touchstart', () => { if (audioCtx.state==='suspended') audioCtx.resume(); }, { once: true });
+
+    // ===================== BUILD PUZZLE GRID =====================
+    for (let i = 0; i < 25; i++) {
+      const cell = document.createElement('div');
+      cell.className = 'glyph-cell'; cell.dataset.index = i;
+      grid.appendChild(cell); cells.push(cell);
+    }
+
+    // ===================== STATE =====================
+    let currentGlyphs = [];
+    let answerSequence = [];
+    let playerSequence = [];
+    let currentColor = '';
+    let crystalActive = false;
+    let handActive = false;
+    let puzzleSolved = false;
+    let currentView = 'idle';
+    let sitesData = null;
+    let currentSite = null;
+    let sideNavActions = [];
+
+    // ===================== VIEW MANAGEMENT =====================
+    function hideAllViews() {
+      grid.style.display = '';
+      grid.classList.remove('active');
+      scryingMenu.classList.remove('show');
+      sitesMapView.classList.remove('show');
+      contentView.classList.remove('show');
+      handPrompt.classList.remove('show');
+      colorClasses.forEach(c => { contentView.classList.remove(c); handPrompt.classList.remove(c); });
+      scryingMenu.className = 'scrying-menu'; // reset to base (id keeps selector)
+      // Actually just remove color classes
+      scryingMenu.classList.remove('show');
+      ['scrying-color-green','scrying-color-blue','scrying-color-purple','scrying-color-red'].forEach(c => scryingMenu.classList.remove(c));
+    }
+
+    function clearSideNav() {
+      sideNavActions = [];
+      sideBoxes.forEach(box => {
+        box.classList.remove('activated','wrong',...colorClasses);
+        box.querySelector('.side-glyph').textContent = '';
+        box.onclick = null;
+      });
+    }
+
+    function setSideNav(actions) {
+      clearSideNav();
+      sideNavActions = actions;
+      actions.forEach((act, i) => {
+        if (i >= 8) return;
+        const box = sideBoxes[i];
+        box.querySelector('.side-glyph').textContent = act.glyph;
+        box.classList.add('activated', currentColor);
+        box.onclick = (e) => { e.preventDefault(); playOrbSelect(); act.action(); };
+      });
+    }
+
+    // ===================== PUZZLE =====================
+    function setGlyphs(glyphs) {
+      currentGlyphs = glyphs;
+      cells.forEach((cell, i) => { cell.textContent = glyphs[i] || ''; });
+    }
+
+    function showGlyphs(glyphs) {
+      setGlyphs(glyphs);
+      grid.style.display = '';
+      grid.classList.add('active');
+      cells.forEach((cell, i) => { setTimeout(() => cell.classList.add('carved'), 15*i); });
+    }
+
+    function hideGlyphs() {
+      cells.forEach(cell => cell.classList.remove('carved','used'));
+      setTimeout(() => grid.classList.remove('active'), 600);
+      colorClasses.forEach(c => grid.classList.remove(c));
+    }
+
+    function resetPuzzle() {
+      playerSequence = [];
+      puzzleSolved = false;
+      clearSideNav();
+      cells.forEach(cell => cell.classList.remove('used'));
+    }
+
+    function wrongAnswer() {
+      playRumble();
+      sideBoxes.forEach(box => box.classList.add('wrong'));
+      setTimeout(() => { sideBoxes.forEach(box => box.classList.remove('wrong')); resetPuzzle(); }, 800);
+    }
+
+    function activatePuzzleSideBox(step, glyphChar) {
+      const box = sideBoxes[step];
+      box.querySelector('.side-glyph').textContent = glyphChar;
+      box.classList.add('activated', currentColor);
+    }
+
+    function checkAnswer() {
+      const correct = playerSequence.length === answerSequence.length &&
+        playerSequence.every((idx, i) => idx === answerSequence[i]);
+      if (correct) {
+        puzzleSolved = true;
+        playArcaneHum();
+        setTimeout(() => showScryingMenu(), 1500);
+      } else {
+        wrongAnswer();
+      }
+    }
+
+    // ===================== SCRYING MENU =====================
+    async function loadSitesData() {
+      try {
+        const res = await fetch('/api/sites', { cache: 'no-store' });
+        sitesData = await res.json();
+      } catch (e) {
+        console.error('Failed to load sites', e);
+        sitesData = { thuls: [] };
+      }
+    }
+
+    function showScryingMenu() {
+      hideAllViews();
+      clearSideNav();
+      currentView = 'menu';
+      grid.style.display = 'none';
+      scryingMenu.classList.add('show', 'scrying-color-' + currentColor);
+    }
+
+    function showHandPrompt() {
+      hideAllViews();
+      clearSideNav();
+      currentView = 'hand';
+      grid.style.display = 'none';
+      handPrompt.classList.add('show', currentColor);
+    }
+
+    document.querySelectorAll('.scry-orb').forEach(orb => {
+      function h(e) {
+        e.preventDefault();
+        playOrbSelect();
+        const m = orb.dataset.menu;
+        if (m === 'sites') openSitesMap();
+        else if (m === 'map') openFacilityMap();
+        else if (m === 'research') openResearch();
+        else if (m === 'personnel') openPersonnel();
+      }
+      orb.addEventListener('click', h);
+      orb.addEventListener('touchend', h);
+    });
+
+    // ===================== SITES MAP =====================
+    function openSitesMap() {
+      hideAllViews();
+      currentView = 'sites';
+      grid.style.display = 'none';
+      sitesMapView.classList.add('show', 'fade-in');
+
+      sitesMapContainer.querySelectorAll('.site-pin').forEach(el => el.remove());
+
+      if (sitesData && sitesData.thuls) {
+        sitesData.thuls.forEach(thul => {
+          const pin = document.createElement('div');
+          pin.className = 'site-pin';
+          pin.style.left = thul.x + '%';
+          pin.style.top = thul.y + '%';
+          pin.innerHTML = '<div class="site-pin-glyph">' + escHtml(thul.glyph) + '</div><div class="site-pin-label">' + escHtml(thul.name) + '</div>';
+          pin.addEventListener('click', (e) => { e.preventDefault(); openSiteDetail(thul); });
+          pin.addEventListener('touchend', (e) => { e.preventDefault(); openSiteDetail(thul); });
+          sitesMapContainer.appendChild(pin);
+        });
+      }
+
+      setSideNav([
+        { glyph: '\u{1208D}', action: () => showScryingMenu() },  // HOME (E2)
+      ]);
+    }
+
+    // ===================== SITE DETAIL =====================
+    function openSiteDetail(thul) {
+      hideAllViews();
+      currentView = 'site-detail';
+      grid.style.display = 'none';
+
+      contentView.classList.add('show', currentColor);
+      contentTitle.textContent = thul.name;
+      contentText.textContent = thul.description || '';
+      contentScroll.scrollTop = 0;
+
+      const nav = [
+        { glyph: '\u{12097}', action: () => openSitesMap() },     // BACK (EN)
+        { glyph: '\u{1208D}', action: () => showScryingMenu() },  // HOME (E2)
+      ];
+      if (thul.pages) thul.pages.forEach(p => nav.push({ glyph: p.glyph || '\u{12146}', action: () => openPage(thul, p) }));
+      if (thul.research) thul.research.forEach(p => nav.push({ glyph: p.glyph || '\u{12246}', action: () => openPage(thul, p) }));
+      if (thul.personnel) thul.personnel.forEach(p => nav.push({ glyph: p.glyph || '\u{121FD}', action: () => openPage(thul, p) }));
+      setSideNav(nav);
+    }
+
+    function openPage(thul, page) {
+      hideAllViews();
+      currentView = 'content';
+      grid.style.display = 'none';
+
+      contentView.classList.add('show', currentColor);
+      contentTitle.textContent = page.title || '';
+      contentText.textContent = page.content || '';
+      contentScroll.scrollTop = 0;
+
+      setSideNav([
+        { glyph: '\u{12097}', action: () => openSiteDetail(thul) },
+        { glyph: '\u{1208D}', action: () => showScryingMenu() },
+      ]);
+    }
+
+    // ===================== FACILITY MAP =====================
+    function openFacilityMap() {
+      hideAllViews();
+      currentView = 'content';
+      grid.style.display = 'none';
+
+      contentView.classList.add('show', currentColor);
+      contentTitle.textContent = currentSite ? currentSite.name + ' \u2014 Facility Map' : 'Facility Map';
+      contentText.textContent = 'The facility map will appear here.\n\nThis section is under construction by the Arcanist Council.';
+      contentScroll.scrollTop = 0;
+
+      setSideNav([{ glyph: '\u{1208D}', action: () => showScryingMenu() }]);
+    }
+
+    // ===================== RESEARCH =====================
+    function openResearch() {
+      hideAllViews();
+      currentView = 'content';
+      grid.style.display = 'none';
+
+      const site = findCurrentSite();
+      if (site && site.research && site.research.length > 0) {
+        const page = site.research[0];
+        contentView.classList.add('show', currentColor);
+        contentTitle.textContent = page.title || 'Research';
+        contentText.textContent = page.content || '';
+        contentScroll.scrollTop = 0;
+
+        const nav = [{ glyph: '\u{1208D}', action: () => showScryingMenu() }];
+        site.research.forEach((p, i) => {
+          if (i > 0) nav.push({ glyph: p.glyph || '\u{12246}', action: () => openPage(site, p) });
+        });
+        setSideNav(nav);
+      } else {
+        contentView.classList.add('show', currentColor);
+        contentTitle.textContent = 'Research Archives';
+        contentText.textContent = 'No research records available for this crystal\'s access level.';
+        setSideNav([{ glyph: '\u{1208D}', action: () => showScryingMenu() }]);
+      }
+    }
+
+    // ===================== PERSONNEL =====================
+    function openPersonnel() {
+      hideAllViews();
+      currentView = 'content';
+      grid.style.display = 'none';
+
+      const site = findCurrentSite();
+      if (site && site.personnel && site.personnel.length > 0) {
+        const page = site.personnel[0];
+        contentView.classList.add('show', currentColor);
+        contentTitle.textContent = page.title || 'Personnel';
+        contentText.textContent = page.content || '';
+        contentScroll.scrollTop = 0;
+
+        const nav = [{ glyph: '\u{1208D}', action: () => showScryingMenu() }];
+        site.personnel.forEach((p, i) => {
+          if (i > 0) nav.push({ glyph: p.glyph || '\u{121FD}', action: () => openPage(site, p) });
+        });
+        setSideNav(nav);
+      } else {
+        contentView.classList.add('show', currentColor);
+        contentTitle.textContent = 'Personnel Records';
+        contentText.textContent = 'No personnel records available for this crystal\'s access level.';
+        setSideNav([{ glyph: '\u{1208D}', action: () => showScryingMenu() }]);
+      }
+    }
+
+    // ===================== HELPERS =====================
+    function findCurrentSite() {
+      if (!sitesData || !sitesData.thuls) return null;
+      return sitesData.thuls.find(t => t.crystal === currentColor) || null;
+    }
+    function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+
+    // ===================== GRID TAP HANDLER =====================
+    function handleCellTap(e) {
+      e.preventDefault();
+      if (currentView !== 'puzzle') return;
+      const touch = e.changedTouches ? e.changedTouches[0] : e;
+      const cell = document.elementFromPoint(touch.clientX, touch.clientY);
+      if (!cell || !cell.classList.contains('glyph-cell')) return;
+      if (!cell.classList.contains('carved') || cell.classList.contains('used')) return;
+      if (puzzleSolved || !crystalActive) return;
+      if (playerSequence.length >= answerSequence.length) return;
+
+      const tappedIndex = parseInt(cell.dataset.index, 10);
+      cell.classList.add('used');
+      playStoneGrind();
+      playerSequence.push(tappedIndex);
+      activatePuzzleSideBox(playerSequence.length - 1, currentGlyphs[tappedIndex]);
+
+      if (playerSequence.length >= answerSequence.length) {
+        setTimeout(checkAnswer, 500);
+      }
+    }
+    grid.addEventListener('touchend', handleCellTap, { passive: false });
+    grid.addEventListener('click', handleCellTap);
+
+    // ===================== WEBSOCKET =====================
+    let ws, reconnectTimer;
+
+    function connect() {
+      ws = new WebSocket('ws://' + location.host);
+
+      ws.onopen = () => { console.log('Connected'); clearTimeout(reconnectTimer); };
+
+      ws.onmessage = async (event) => {
+        const data = JSON.parse(event.data);
+
+        if (data.type === 'crystal') {
+          document.body.classList.add('active');
+          hideAllViews();
+          resetPuzzle();
+          clearSideNav();
+          playCrystalChime();
+
+          currentColor = data.color;
+          crystalActive = true;
+
+          await loadSitesData();
+          currentSite = findCurrentSite();
+
+          // If hand is already on, go straight to scrying menu; otherwise show hand prompt
+          if (handActive) {
+            setTimeout(() => showScryingMenu(), 500);
+          } else {
+            setTimeout(() => showHandPrompt(), 500);
+          }
+
+        } else if (data.type === 'removed') {
+          crystalActive = false;
+          handActive = false;
+          puzzleSolved = false;
+          currentView = 'idle';
+          currentColor = '';
+          hideAllViews();
+          resetPuzzle();
+          clearSideNav();
+          hideGlyphs();
+          document.body.classList.remove('active');
+
+        } else if (data.type === 'hand-on') {
+          handActive = true;
+          if (crystalActive && currentView === 'hand') {
+            playArcaneHum();
+            showScryingMenu();
+          }
+
+        } else if (data.type === 'hand-off') {
+          handActive = false;
+          if (crystalActive && currentView !== 'hand') {
+            showHandPrompt();
+          }
+        }
+      };
+
+      ws.onclose = () => { console.log('Disconnected'); reconnectTimer = setTimeout(connect, 2000); };
+      ws.onerror = () => ws.close();
+    }
+
+    // ===================== EXIT =====================
+    function handleExit(e) {
+      e.stopPropagation(); e.preventDefault();
+      fetch('/exit', { method: 'POST' }).finally(() => window.close());
+    }
+    document.getElementById('exit-btn').addEventListener('touchend', handleExit);
+    document.getElementById('exit-btn').addEventListener('click', handleExit);
+
+    document.addEventListener('touchmove', function(e) {
+      if (contentView.classList.contains('show') && contentScroll.contains(e.target)) return;
+      e.preventDefault();
+    }, { passive: false });
+
+    connect();
+    loadSitesData();
+  </script>
+</body>
+</html>
