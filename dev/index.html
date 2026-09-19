@@ -20,15 +20,12 @@
     .btn:active { transform: scale(0.97); }
     .btn-insert { background: #4CAF50; color: #fff; }
     .btn-remove { background: var(--accent); color: #fff; }
-    .btn-hand-on { background: #2196F3; color: #fff; }
-    .btn-hand-off { background: #FF9800; color: #fff; }
     .btn-sm { padding: 6px 14px; font-size: 0.8rem; }
     .crystal-grid { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
     .crystal-btn { padding: 12px 20px; border: 2px solid var(--border); border-radius: 8px; background: var(--bg); color: var(--text); cursor: pointer; font-size: 0.85rem; text-align: center; min-width: 100px; transition: all 0.2s; }
     .crystal-btn:hover { border-color: var(--gold); }
     .crystal-btn.active { border-color: var(--accent); background: rgba(233,69,96,0.15); }
     .crystal-swatch { width: 24px; height: 24px; border-radius: 50%; margin: 0 auto 6px; border: 2px solid rgba(255,255,255,0.15); }
-    .hand-controls { display: flex; gap: 12px; margin-top: 12px; }
     .state-row { display: flex; gap: 24px; margin-top: 12px; font-size: 0.9rem; }
     .state-row span { color: var(--muted); }
     .state-row strong { color: var(--text); }
@@ -36,8 +33,6 @@
     .log div { padding: 2px 0; border-bottom: 1px solid rgba(255,255,255,0.03); }
     .log .ev-crystal { color: #4CAF50; }
     .log .ev-removed { color: var(--accent); }
-    .log .ev-hand-on { color: #2196F3; }
-    .log .ev-hand-off { color: #FF9800; }
     .links { margin-top: 16px; font-size: 0.85rem; }
     .links a { color: var(--gold); text-decoration: none; margin-right: 16px; }
     .links a:hover { text-decoration: underline; }
@@ -45,7 +40,7 @@
 </head>
 <body>
   <h1>🔧 Hardware Simulator</h1>
-  <div class="subtitle">Simulates RFID crystal reader and Kano motion sensor — no hardware required</div>
+  <div class="subtitle">Simulates the RFID crystal reader without hardware</div>
 
   <div class="panel">
     <h2>🔮 Crystal (RFID) <span class="status" id="crystal-status"></span></h2>
@@ -55,14 +50,6 @@
     <div class="crystal-grid" id="crystal-grid"></div>
     <div style="margin-top: 14px;">
       <button class="btn btn-remove" onclick="removeCrystal()">Remove Crystal</button>
-    </div>
-  </div>
-
-  <div class="panel">
-    <h2>🖐️ Hand Sensor (Kano) <span class="status" id="hand-status"></span></h2>
-    <div class="hand-controls">
-      <button class="btn btn-hand-on" onclick="handOn()">Hand ON (cover sensor)</button>
-      <button class="btn btn-hand-off" onclick="handOff()">Hand OFF (remove hand)</button>
     </div>
   </div>
 
@@ -112,22 +99,9 @@
       refreshStatus();
     }
 
-    async function handOn() {
-      await api('/api/sim/hand-on');
-      log('Hand ON', 'ev-hand-on');
-      refreshStatus();
-    }
-
-    async function handOff() {
-      await api('/api/sim/hand-off');
-      log('Hand OFF', 'ev-hand-off');
-      refreshStatus();
-    }
-
     async function refreshStatus() {
       const data = await (await fetch('/api/sim/status')).json();
       document.getElementById('crystal-status').className = 'status ' + (data.crystalActive ? 'on' : 'off');
-      document.getElementById('hand-status').className = 'status ' + (data.handOn ? 'on' : 'off');
       document.getElementById('current-crystal').textContent = data.currentCrystal ? '0x' + data.currentCrystal : 'None';
       activeCrystalHex = data.currentCrystal;
 
@@ -150,8 +124,6 @@
       const data = JSON.parse(e.data);
       if (data.type === 'crystal') log('WS: crystal ' + data.color, 'ev-crystal');
       else if (data.type === 'removed') log('WS: crystal removed', 'ev-removed');
-      else if (data.type === 'hand-on') log('WS: hand-on', 'ev-hand-on');
-      else if (data.type === 'hand-off') log('WS: hand-off', 'ev-hand-off');
       setTimeout(refreshStatus, 100);
     };
 

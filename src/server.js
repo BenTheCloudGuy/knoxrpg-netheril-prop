@@ -4,14 +4,38 @@ const http = require('http');
 const { WebSocketServer } = require('ws');
 const yaml = require('js-yaml');
 const fs = require('fs');
+const { format } = require('util');
+
+const LIVE_LOG_LIMIT = 500;
+const liveLogBuffer = [];
+const liveLogClients = new Set();
+
+function publishLiveLog(text, err = false) {
+  const entry = { text: `${new Date().toISOString()} ${text}`, err };
+  liveLogBuffer.push(entry);
+  if (liveLogBuffer.length > LIVE_LOG_LIMIT) liveLogBuffer.shift();
+  const message = `data: ${JSON.stringify(entry)}\n\n`;
+  liveLogClients.forEach(client => client.write(message));
+}
+
+function captureConsole(method, err = false) {
+  const original = console[method].bind(console);
+  console[method] = (...args) => {
+    original(...args);
+    publishLiveLog(format(...args), err);
+  };
+}
+
+captureConsole('log');
+captureConsole('warn', true);
+captureConsole('error', true);
 
 const SIM_MODE = process.env.SIM_MODE === 'true';
 
 // --- Conditional hardware imports ---
-let SerialPort, ReadlineParser, ws281x;
+let SerialPort, ws281x;
 if (!SIM_MODE) {
   ({ SerialPort } = require('serialport'));
-  ({ ReadlineParser } = require('@serialport/parser-readline'));
   ws281x = require('rpi-ws281x');
 }
 
@@ -22,11 +46,6 @@ const PORT = 3000;
 const GM_PORT = 3001;
 const SERIAL_PATH = '/dev/serial0';
 const SERIAL_BAUD = 9600;
-const MOTION_SERIAL_PATH = process.env.MOTION_PORT || '/dev/ttyACM0';
-const MOTION_BAUD = 115200;
-const HAND_ON_THRESHOLD = 230;   // proximity >= this = hand on
-const HAND_OFF_THRESHOLD = 200;  // proximity drops below this = hand off
-const HAND_TIMEOUT = 1000;       // ms below off-threshold before hand-off
 
 // --- RGB LED Ring ---
 const NUM_LEDS = 6;
@@ -53,7 +72,7 @@ const LED_COLORS = {
   white:   0xFFFFFF,
   orange:  0xFF8000,
   pink:    0xFF0080,
-  black:   0x000000,
+  black:   0x200020,
   unknown: 0x333333,
 };
 
@@ -68,6 +87,27 @@ const COLOR_TO_SCHOOL = {
   black:  'necromancy',
   green:  'transmutation',
 };
+const SCHOOL_GAMES = {
+  abjuration:    'trap-disarmament',
+  conjuration:   'weave-lock',
+  divination:    'wheel-of-fate',
+  enchantment:   'lying-statues',
+  evocation:     'runic-sequence',
+  illusion:      'glyph-matching',
+  necromancy:    'monster-silhouette',
+  transmutation: 'potion-mixing',
+};
+const GAME_NAMES = {
+  'trap-disarmament': 'Trap Disarmament',
+  'weave-lock': 'Weave Lock',
+  'wheel-of-fate': 'Wheel of Fate',
+  'lying-statues': 'The Lying Statues',
+  'runic-sequence': 'Runic Sequence',
+  'glyph-matching': 'Glyph Matching',
+  'monster-silhouette': 'Monster Silhouette',
+  'potion-mixing': 'Potion Mixing',
+};
+const VALID_GAME_IDS = new Set(Object.values(SCHOOL_GAMES));
 const VALID_SCHOOLS = new Set(Object.values(COLOR_TO_SCHOOL));
 const VALID_LOCATIONS = new Set(['top', 'bottom', 'left', 'right']);
 
@@ -191,34 +231,121 @@ function lookupCrystal(tagHex) {
 // --- RDM6300 RFID Reader ---
 let serialBuffer = '';
 let currentCrystal = null;
+let currentCrystalHex = null;
 let currentCrystalInfo = null;
 let lastSeenTime = 0;
-const CRYSTAL_TIMEOUT = 500; // ms before considering crystal removed
+let insertionCounter = 0;
+let activeInsertion = null;
+let emulatedCrystal = false;
+// ms with no RDM6300 frame before a crystal is treated as removed. The real
+// reader delivers valid frames only about every ~520 ms when a crystal rests
+// in the seated position (marginal antenna coupling), so a 500 ms timeout
+// dropped the crystal between reads and re-inserted it on the next frame,
+// producing a show-once-then-removed flicker. 1500 ms gives ~3 frames of
+// headroom while keeping removal responsive. Override with CRYSTAL_TIMEOUT_MS.
+const CRYSTAL_TIMEOUT = Number(process.env.CRYSTAL_TIMEOUT_MS) || 1500;
 
-function simulateCrystalInsert(tagHex) {
+function getGamePrize(gameId) {
+  const legacyPrize = gameId === 'glyph-matching' ? config.glyphMatchingPrize : null;
+  const prize = (config.gamePrizes && config.gamePrizes[gameId]) || legacyPrize || {};
+  return {
+    enabled: prize.enabled !== false,
+    title: String(prize.title || 'A Prize from the Vault').slice(0, 100),
+    description: String(prize.description || 'Present this screen to the Game Master to claim your prize.').slice(0, 500),
+  };
+}
+
+function getCrystalSnapshot() {
+  if (currentCrystal === null || !currentCrystalInfo || !activeInsertion) return { type: 'removed' };
+  const gameId = SCHOOL_GAMES[currentCrystalInfo.school] || null;
+  const gameCompleted = activeInsertion.completedGameId === gameId;
+  return {
+    type: 'crystal',
+    insertionId: activeInsertion.id,
+    tagId: currentCrystal,
+    tagHex: currentCrystalHex,
+    color: currentCrystalInfo.color,
+    school: currentCrystalInfo.school,
+    name: currentCrystalInfo.name,
+    emulated: emulatedCrystal,
+    gameId,
+    gameCompleted,
+    glyphPrizeClaimed: gameId === 'glyph-matching' && gameCompleted,
+    prize: gameCompleted ? getGamePrize(gameId) : undefined,
+  };
+}
+
+function simulateCrystalInsert(tagHex, emulated = false) {
   const tagId = parseInt(tagHex, 16);
   currentCrystal = tagId;
+  currentCrystalHex = tagHex.toUpperCase();
   lastSeenTime = Date.now();
+  emulatedCrystal = emulated;
   const info = lookupCrystal(tagHex);
   currentCrystalInfo = info;
+  activeInsertion = {
+    id: `${Date.now()}-${++insertionCounter}`,
+    completedGameId: null,
+    completionResponse: null,
+  };
   console.log(`Crystal: ${info.color}/${info.school || '?'} (0x${tagHex})`);
   const ledColor = (info.color in LED_COLORS) ? LED_COLORS[info.color] : LED_COLORS.unknown;
   try { ledFill(ledColor); } catch (e) { console.error('ledFill failed:', e.message); }
-  broadcast({ type: 'crystal', tagId, tagHex, color: info.color, school: info.school, name: info.name });
+  broadcast(getCrystalSnapshot());
 }
 
 function simulateCrystalRemove() {
   console.log('Crystal removed');
   currentCrystal = null;
+  currentCrystalHex = null;
   currentCrystalInfo = null;
+  activeInsertion = null;
+  emulatedCrystal = false;
   serialBuffer = ''; // discard any partial frame left over from the moment of removal
   try { ledOff(); } catch (e) { console.error('ledOff failed:', e.message); }
   broadcast({ type: 'removed' });
 }
 
+app.post('/api/games/:gameId/complete', (req, res) => {
+  const gameId = String(req.params.gameId || '').toLowerCase();
+  if (!VALID_GAME_IDS.has(gameId)) return res.status(404).json({ error: 'Unknown game.' });
+  if (currentCrystal === null || !currentCrystalInfo || !activeInsertion) {
+    return res.status(409).json({ error: 'A crystal must remain inserted to claim a prize.' });
+  }
+  if (req.get('X-Netheril-Insertion') !== activeInsertion.id) {
+    return res.status(409).json({ error: 'This game belongs to an expired crystal placement.' });
+  }
+  const expectedGameId = SCHOOL_GAMES[currentCrystalInfo.school];
+  if (gameId !== expectedGameId) {
+    return res.status(409).json({ error: 'This game does not belong to the inserted crystal.' });
+  }
+  if (activeInsertion.completedGameId) {
+    if (activeInsertion.completedGameId === gameId) return res.json(activeInsertion.completionResponse);
+    return res.status(409).json({ error: 'A game has already been completed for this crystal placement.' });
+  }
+  const prize = getGamePrize(gameId);
+  const response = { ok: true, gameId, prize };
+  activeInsertion.completedGameId = gameId;
+  activeInsertion.completionResponse = response;
+  console.log(`${GAME_NAMES[gameId]} won: ${currentCrystalInfo.color}/${currentCrystalInfo.school || '?'} — ${prize.title}`);
+  broadcast(getCrystalSnapshot());
+  res.json(response);
+});
+
 function parseRDM6300(data) {
+  // RDM6300 frames are STX + 12 ASCII hex characters + ETX. Treat a
+  // checksum failure as a received frame, but never as a usable tag read.
+  const frameValid = typeof data === 'string'
+    && data.length === 14
+    && data.charCodeAt(0) === 0x02
+    && data.charCodeAt(13) === 0x03
+    && /^[0-9A-Fa-f]{12}$/.test(data.substring(1, 13));
+  if (!frameValid) {
+    return { frameValid: false, valid: false, tagId: null, tagHex: null };
+  }
+
   const version = data.substring(1, 3);
-  const tagHex = data.substring(3, 11);
+  const tagHex = data.substring(3, 11).toUpperCase();
   const checksum = data.substring(11, 13);
 
   const fullHex = version + tagHex;
@@ -228,6 +355,7 @@ function parseRDM6300(data) {
   }
 
   return {
+    frameValid: true,
     valid: xor === parseInt(checksum, 16),
     tagId: parseInt(tagHex, 16),
     tagHex
@@ -245,7 +373,13 @@ if (!SIM_MODE) {
     console.error('Serial error:', err.message);
   });
 
+  // Opt-in RFID tracing. Set RFID_DEBUG=1 to see exactly what the reader emits
+  // (raw bytes, per-frame validity, and why a crystal was considered removed).
+  // Default behavior is unchanged when it is not set.
+  const RFID_DEBUG = process.env.RFID_DEBUG === '1' || process.env.RFID_DEBUG === 'true';
+
   serial.on('data', (chunk) => {
+    if (RFID_DEBUG) console.log(`[rfid] rx ${chunk.length}B: ${chunk.toString('hex')}`);
     // Use 'latin1' so all 256 byte values round-trip intact (ascii masks the high bit).
     serialBuffer += chunk.toString('latin1');
 
@@ -269,6 +403,7 @@ if (!SIM_MODE) {
       // If the byte at position 13 isn't ETX, this frame is corrupt — discard
       // just this STX and resync on the next one.
       if (serialBuffer.charCodeAt(13) !== 0x03) {
+        if (RFID_DEBUG) console.log(`[rfid] resync: no ETX at +13, dropping STX (buf=${Buffer.from(serialBuffer.substring(0, 14), 'latin1').toString('hex')})`);
         serialBuffer = serialBuffer.substring(1);
         continue;
       }
@@ -277,106 +412,37 @@ if (!SIM_MODE) {
       serialBuffer = serialBuffer.substring(14);
 
       const tag = parseRDM6300(message);
-      if (tag.valid) {
+      if (RFID_DEBUG) console.log(`[rfid] frame tag=${tag.tagHex} frameValid=${tag.frameValid} checksumValid=${tag.valid}`);
+      // Removal is based on 500 ms with no RDM6300 frame, not 500 ms with no
+      // checksum-valid tag. A transient corrupt frame must not tear down an
+      // already-detected crystal, while checksum validation still gates every
+      // insertion and tag transition.
+      if (tag.frameValid && currentCrystal !== null) {
         lastSeenTime = Date.now();
+      }
+      if (tag.valid) {
         if (currentCrystal !== tag.tagId) {
           simulateCrystalInsert(tag.tagHex);
         }
+        // Start the timeout after insertion side effects (LED + broadcast), so
+        // slow synchronous hardware work cannot make a new crystal look stale.
+        lastSeenTime = Date.now();
       }
     }
   });
 
   // Check for crystal removal
   setInterval(() => {
-    if (currentCrystal !== null && Date.now() - lastSeenTime > CRYSTAL_TIMEOUT) {
+    if (currentCrystal !== null && !emulatedCrystal && Date.now() - lastSeenTime > CRYSTAL_TIMEOUT) {
+      if (RFID_DEBUG) console.log(`[rfid] removal: ${Date.now() - lastSeenTime}ms since last frame (timeout ${CRYSTAL_TIMEOUT}ms)`);
       simulateCrystalRemove();
     }
   }, 50);
 } // end !SIM_MODE RFID
 
-// --- Kano Motion Sensor (USB CDC ACM) ---
-let handOn = false;
-let lastDataTime = Date.now();
-
-function simulateHandOn() {
-  if (!handOn) {
-    handOn = true;
-    console.log('Hand ON');
-    broadcast({ type: 'hand-on' });
-  }
-}
-
-function simulateHandOff() {
-  if (handOn) {
-    handOn = false;
-    console.log('Hand OFF');
-    broadcast({ type: 'hand-off' });
-  }
-}
-
-if (!SIM_MODE) {
-  try {
-    const motionSerial = new SerialPort({ path: MOTION_SERIAL_PATH, baudRate: MOTION_BAUD });
-    const motionParser = motionSerial.pipe(new ReadlineParser({ delimiter: '\n' }));
-
-    motionSerial.on('open', () => {
-      console.log(`Motion sensor open: ${MOTION_SERIAL_PATH} @ ${MOTION_BAUD}`);
-    });
-
-    motionSerial.on('error', (err) => {
-      console.error('Motion sensor error:', err.message);
-    });
-
-    motionParser.on('data', (line) => {
-      const trimmed = line.trim();
-      if (!trimmed.startsWith('{')) return;
-      try {
-        const obj = JSON.parse(trimmed);
-        if (obj.name === 'proximity-data' && obj.detail) {
-          const prox = obj.detail.proximity || 0;
-          lastDataTime = Date.now();
-          // High proximity = hand approaching, trigger ON
-          if (prox >= HAND_ON_THRESHOLD) {
-            simulateHandOn();
-          }
-        }
-      } catch (_e) { /* ignore */ }
-    });
-
-    // Hand stays ON while data is silent (sensor blocked by hand).
-    // Hand goes OFF when data resumes with low values for 1 second.
-    let lowSince = 0;
-    setInterval(() => {
-      const silence = Date.now() - lastDataTime;
-      if (handOn) {
-        // If data is silent, hand is still covering — stay ON
-        if (silence > 500) return;
-        // Data is flowing again — track how long it's been low
-        if (!lowSince) lowSince = Date.now();
-        if (Date.now() - lowSince > HAND_TIMEOUT) {
-          simulateHandOff();
-          lowSince = 0;
-        }
-      } else {
-        lowSince = 0;
-      }
-    }, 100);
-  } catch (err) {
-    console.warn('Motion sensor not available:', err.message);
-  }
-} // end !SIM_MODE motion
-
 // Send current state to newly connected clients
 wss.on('connection', (ws) => {
-  ws.send(JSON.stringify({ type: handOn ? 'hand-on' : 'hand-off' }));
-
-  if (currentCrystal !== null && currentCrystalInfo) {
-    const hex = currentCrystal.toString(16).padStart(8, '0').toUpperCase();
-    const info = currentCrystalInfo;
-    ws.send(JSON.stringify({ type: 'crystal', tagId: currentCrystal, tagHex: hex, color: info.color, school: info.school, name: info.name }));
-  } else {
-    ws.send(JSON.stringify({ type: 'removed' }));
-  }
+  ws.send(JSON.stringify(getCrystalSnapshot()));
 });
 
 // ============================================================
@@ -463,6 +529,53 @@ gmApp.post('/api/reload-player', (_req, res) => {
   broadcast({ type: 'reload' });
   res.json({ ok: true });
 });
+
+// --- GM Crystal Emulation ---
+gmApp.get('/api/emulation/status', (_req, res) => {
+  res.json({
+    active: emulatedCrystal,
+    crystal: emulatedCrystal ? getCrystalSnapshot() : null,
+    crystals: Object.entries(config.crystals || {}).map(([hex, crystal]) => ({
+      hex,
+      color: crystal.color,
+      school: crystal.school || COLOR_TO_SCHOOL[crystal.color] || null,
+      name: crystal.name || '',
+    })),
+  });
+});
+
+gmApp.post('/api/emulation/crystal', (req, res) => {
+  const cleanHex = String((req.body && req.body.hex) || '').toUpperCase().replace(/^0X/, '');
+  if (!cleanHex) return res.status(400).json({ error: 'hex is required' });
+  if (!CRYSTAL_MAP[cleanHex]) return res.status(404).json({ error: 'Configured crystal not found' });
+  simulateCrystalInsert(cleanHex, true);
+  res.json({ ok: true, crystal: getCrystalSnapshot() });
+});
+
+gmApp.post('/api/emulation/crystal-remove', (_req, res) => {
+  if (emulatedCrystal) simulateCrystalRemove();
+  res.json({ ok: true, active: false });
+});
+
+// --- GM Game Prizes ---
+gmApp.get('/api/game-prizes', (_req, res) => {
+  res.json(Object.entries(GAME_NAMES).map(([gameId, name]) => ({ gameId, name, prize: getGamePrize(gameId) })));
+});
+
+gmApp.put('/api/game-prizes/:gameId', (req, res) => {
+  const gameId = String(req.params.gameId || '').toLowerCase();
+  if (!VALID_GAME_IDS.has(gameId)) return res.status(404).json({ error: 'Unknown game.' });
+  if (!config.gamePrizes) config.gamePrizes = {};
+  config.gamePrizes[gameId] = {
+    enabled: req.body && req.body.enabled !== false,
+    title: String((req.body && req.body.title) || '').trim().slice(0, 100) || 'A Prize from the Vault',
+    description: String((req.body && req.body.description) || '').trim().slice(0, 500) || 'Present this screen to the Game Master to claim your prize.',
+  };
+  saveConfig(config);
+  res.json(getGamePrize(gameId));
+});
+
+gmApp.get('/api/prize', (_req, res) => res.json(getGamePrize('glyph-matching')));
 
 // --- GM Pin CRUD API ---
 gmApp.get('/api/pins', (_req, res) => {
@@ -679,7 +792,6 @@ gmApp.delete('/api/pins/:id', (req, res) => {
 });
 
 const { execSync } = require('child_process');
-const { spawn } = require('child_process');
 
 // --- GM Git Update API (SSE stream) ---
 gmApp.get('/api/update', (req, res) => {
@@ -764,35 +876,23 @@ gmApp.post('/api/shutdown', (_req, res) => {
   }, 3000);
 });
 
-// --- GM Live Logs (SSE stream of journalctl) ---
+// --- GM Live Logs ---
 gmApp.get('/api/logs', (req, res) => {
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
-    'Cache-Control': 'no-cache',
+    'Cache-Control': 'no-cache, no-transform',
     'Connection': 'keep-alive',
   });
+  res.flushHeaders();
+  res.write(': connected\n\n');
 
-  const proc = spawn('journalctl', ['-u', 'netheril', '-f', '-n', '80', '--no-pager', '-o', 'short-iso'], {});
-
-  proc.stdout.on('data', (chunk) => {
-    chunk.toString().split('\n').filter(Boolean).forEach(line => {
-      res.write('data: ' + JSON.stringify({ text: line }) + '\n\n');
-    });
+  liveLogBuffer.slice(-80).forEach(entry => {
+    res.write(`data: ${JSON.stringify(entry)}\n\n`);
   });
-
-  proc.stderr.on('data', (chunk) => {
-    chunk.toString().split('\n').filter(Boolean).forEach(line => {
-      res.write('data: ' + JSON.stringify({ text: line, err: true }) + '\n\n');
-    });
-  });
-
-  proc.on('close', () => {
-    res.write('data: ' + JSON.stringify({ text: '[journalctl exited]', err: true }) + '\n\n');
-    res.end();
-  });
+  liveLogClients.add(res);
 
   req.on('close', () => {
-    proc.kill();
+    liveLogClients.delete(res);
   });
 });
 
@@ -805,7 +905,6 @@ if (SIM_MODE) {
       simMode: true,
       crystalActive: currentCrystal !== null,
       currentCrystal: currentCrystal ? currentCrystal.toString(16).padStart(8, '0').toUpperCase() : null,
-      handOn,
       crystals: Object.entries(config.crystals || {}).map(([hex, c]) => ({ hex, color: c.color })),
     });
   });
@@ -814,22 +913,12 @@ if (SIM_MODE) {
     const { hex } = req.body;
     if (!hex) return res.status(400).json({ error: 'hex required' });
     const cleanHex = String(hex).toUpperCase().replace(/^0X/, '');
-    simulateCrystalInsert(cleanHex);
+    simulateCrystalInsert(cleanHex, true);
     res.json({ ok: true, hex: cleanHex });
   });
 
   gmApp.post('/api/sim/crystal-remove', (_req, res) => {
     simulateCrystalRemove();
-    res.json({ ok: true });
-  });
-
-  gmApp.post('/api/sim/hand-on', (_req, res) => {
-    simulateHandOn();
-    res.json({ ok: true });
-  });
-
-  gmApp.post('/api/sim/hand-off', (_req, res) => {
-    simulateHandOff();
     res.json({ ok: true });
   });
 

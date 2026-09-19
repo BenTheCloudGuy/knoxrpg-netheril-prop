@@ -101,6 +101,8 @@
   <div class="tabs">
     <div class="tab active" data-tab="schools">🔮 Schools</div>
     <div class="tab" data-tab="crystals">🔮 Crystals</div>
+    <div class="tab" data-tab="games">🎲 Games</div>
+    <div class="tab" data-tab="emulator">🧪 Emulator</div>
     <div class="tab" data-tab="update" style="margin-left:auto;">🔄 Update</div>
     <div class="tab" data-tab="logs">📋 Logs</div>
   </div>
@@ -132,6 +134,52 @@
       </div>
       <div class="site-editor" id="crystal-editor">
         <p style="color: var(--muted); padding: 40px; text-align: center;">Select a crystal to edit, or scan a new RFID tag and click "+ Add Crystal".</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== GAMES TAB ==================== -->
+  <div class="tab-content" id="tab-games">
+    <div class="site-editor" style="max-width:900px; margin:0 auto;">
+      <h2>Game Prizes</h2>
+      <p style="color:var(--muted); margin-bottom:20px; line-height:1.5;">Choose a school trial and configure the reward shown after that game is completed.</p>
+      <div class="field">
+        <label>School trial</label>
+        <select id="prize-game"></select>
+      </div>
+      <div class="field">
+        <label style="display:flex; align-items:center; gap:8px; color:var(--text);">
+          <input type="checkbox" id="prize-enabled" style="width:auto;"> Physical prize enabled
+        </label>
+      </div>
+      <div class="field">
+        <label>Prize title</label>
+        <input id="prize-title" maxlength="100" placeholder="A Prize from the Vault">
+      </div>
+      <div class="field">
+        <label>Player-facing prize description</label>
+        <textarea id="prize-description" maxlength="500" style="min-height:150px;" placeholder="Describe what the player should claim from the Game Master."></textarea>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; margin-top:20px;">
+        <button class="btn btn-primary" id="btn-save-prize">💾 Save Prize</button>
+        <span id="prize-save-status" style="font-size:0.85rem; color:var(--muted);"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==================== EMULATOR TAB ==================== -->
+  <div class="tab-content" id="tab-emulator">
+    <div class="site-editor" style="max-width:900px; margin:0 auto;">
+      <h2>Crystal Emulator</h2>
+      <p style="color:var(--muted); margin-bottom:20px; line-height:1.5;">Emulate a configured crystal in the player prop without using the RFID reader.</p>
+      <div class="field">
+        <label>Configured crystal</label>
+        <select id="emulation-crystal"></select>
+      </div>
+      <div style="display:flex; align-items:center; gap:12px; margin-top:20px;">
+        <button class="btn btn-primary" id="btn-emulation-insert">▶ Insert Crystal</button>
+        <button class="btn btn-secondary" id="btn-emulation-remove" disabled>■ Remove Crystal</button>
+        <span id="emulation-status" style="font-size:0.85rem; color:var(--muted);">Loading...</span>
       </div>
     </div>
   </div>
@@ -177,6 +225,7 @@
         document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
         document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+        if (tab.dataset.tab === 'emulator') loadEmulation();
       });
     });
 
@@ -338,6 +387,147 @@
       await fetchCrystals();
       renderCrystalEditor(crystal);
     });
+
+    // ==================== GAME PRIZES ====================
+    let gamePrizes = [];
+
+    function showSelectedPrize() {
+      const gameId = document.getElementById('prize-game').value;
+      const selected = gamePrizes.find(game => game.gameId === gameId);
+      if (!selected) return;
+      document.getElementById('prize-enabled').checked = selected.prize.enabled;
+      document.getElementById('prize-title').value = selected.prize.title;
+      document.getElementById('prize-description').value = selected.prize.description;
+      document.getElementById('prize-save-status').textContent = '';
+    }
+
+    async function loadPrizes() {
+      const response = await fetch('/api/game-prizes');
+      gamePrizes = await response.json();
+      const select = document.getElementById('prize-game');
+      select.innerHTML = '';
+      gamePrizes.forEach(game => {
+        const option = document.createElement('option');
+        option.value = game.gameId;
+        option.textContent = game.name;
+        select.appendChild(option);
+      });
+      showSelectedPrize();
+    }
+
+    document.getElementById('prize-game').addEventListener('change', showSelectedPrize);
+
+    document.getElementById('btn-save-prize').addEventListener('click', async () => {
+      const button = document.getElementById('btn-save-prize');
+      const status = document.getElementById('prize-save-status');
+      button.disabled = true;
+      status.textContent = 'Saving...';
+      status.style.color = 'var(--muted)';
+      try {
+        const gameId = document.getElementById('prize-game').value;
+        const response = await fetch('/api/game-prizes/' + encodeURIComponent(gameId), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            enabled: document.getElementById('prize-enabled').checked,
+            title: document.getElementById('prize-title').value,
+            description: document.getElementById('prize-description').value,
+          }),
+        });
+        if (!response.ok) throw new Error('Prize could not be saved.');
+        const prize = await response.json();
+        const selected = gamePrizes.find(game => game.gameId === gameId);
+        if (selected) selected.prize = prize;
+        document.getElementById('prize-title').value = prize.title;
+        document.getElementById('prize-description').value = prize.description;
+        await fetch('/api/reload-player', { method: 'POST' });
+        status.textContent = 'Saved. Player reloaded.';
+        status.style.color = '#4CAF50';
+      } catch (error) {
+        status.textContent = error.message;
+        status.style.color = '#e94560';
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    // ==================== CRYSTAL EMULATION ====================
+    async function loadEmulation() {
+      const select = document.getElementById('emulation-crystal');
+      const insertButton = document.getElementById('btn-emulation-insert');
+      const removeButton = document.getElementById('btn-emulation-remove');
+      const status = document.getElementById('emulation-status');
+      try {
+        const response = await fetch('/api/emulation/status');
+        if (!response.ok) throw new Error('Emulator unavailable.');
+        const data = await response.json();
+        const previousValue = select.value;
+        select.innerHTML = '';
+        data.crystals.forEach(crystal => {
+          const option = document.createElement('option');
+          option.value = crystal.hex;
+          option.textContent = (crystal.name || 'Unnamed Crystal') + ' · ' + (crystal.school || crystal.color) + ' · 0x' + crystal.hex;
+          select.appendChild(option);
+        });
+        if (data.crystals.some(crystal => crystal.hex === previousValue)) select.value = previousValue;
+        if (data.active && data.crystal) {
+          select.value = data.crystal.tagHex;
+          status.textContent = 'Inserted: ' + (data.crystal.name || data.crystal.school || data.crystal.color);
+          status.style.color = '#4CAF50';
+        } else {
+          status.textContent = 'No emulated crystal inserted.';
+          status.style.color = 'var(--muted)';
+        }
+        insertButton.disabled = data.crystals.length === 0;
+        removeButton.disabled = !data.active;
+      } catch (error) {
+        status.textContent = error.message;
+        status.style.color = '#e94560';
+        insertButton.disabled = true;
+        removeButton.disabled = true;
+      }
+    }
+
+    document.getElementById('btn-emulation-insert').addEventListener('click', async () => {
+      const button = document.getElementById('btn-emulation-insert');
+      const status = document.getElementById('emulation-status');
+      button.disabled = true;
+      status.textContent = 'Inserting...';
+      try {
+        const response = await fetch('/api/emulation/crystal', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ hex: document.getElementById('emulation-crystal').value }),
+        });
+        if (!response.ok) {
+          const data = await response.json();
+          throw new Error(data.error || 'Crystal could not be emulated.');
+        }
+        await loadEmulation();
+      } catch (error) {
+        status.textContent = error.message;
+        status.style.color = '#e94560';
+        button.disabled = false;
+      }
+    });
+
+    document.getElementById('btn-emulation-remove').addEventListener('click', async () => {
+      const button = document.getElementById('btn-emulation-remove');
+      button.disabled = true;
+      try {
+        const response = await fetch('/api/emulation/crystal-remove', { method: 'POST' });
+        if (!response.ok) throw new Error('Emulated crystal could not be removed.');
+        await loadEmulation();
+      } catch (error) {
+        const status = document.getElementById('emulation-status');
+        status.textContent = error.message;
+        status.style.color = '#e94560';
+        button.disabled = false;
+      }
+    });
+
+    loadPrizes();
+    loadEmulation();
 
     // ==================== HELPERS ====================
     function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }

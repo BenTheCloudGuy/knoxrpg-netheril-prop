@@ -6,9 +6,12 @@ APP_DIR="$(cd "$(dirname "$0")" && pwd)"
 echo "=== Netheril Prop — Service Installer ==="
 echo ""
 
-# Copy service files
-sudo cp "$APP_DIR/netheril.service" /etc/systemd/system/netheril.service
+# Copy service files, rewriting WorkingDirectory to this checkout's actual path
+sudo sed -e "s|^WorkingDirectory=.*|WorkingDirectory=$APP_DIR|" \
+  "$APP_DIR/netheril.service" | sudo tee /etc/systemd/system/netheril.service >/dev/null
 sudo cp "$APP_DIR/netheril-kiosk.service" /etc/systemd/system/netheril-kiosk.service
+
+echo "Installed with WorkingDirectory=$APP_DIR"
 
 # Reload systemd
 sudo systemctl daemon-reload

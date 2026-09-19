@@ -6,7 +6,7 @@ Wants=netheril-kiosk.service
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/home/benthebuilder/knoxrpg-netheril-prop
+WorkingDirectory=/home/benthebuilder/knoxrpg-netheril-dungeon-runner
 ExecStart=/usr/bin/node src/server.js
 Restart=always
 RestartSec=5

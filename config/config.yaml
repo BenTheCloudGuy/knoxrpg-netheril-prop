@@ -3,22 +3,14 @@ crystals:
     color: blue
     school: conjuration
     name: Kyber of Calling
-  00000C04:
-    color: green
-    school: transmutation
-    name: Kyber of Shaping
   00000C09:
     color: red
     school: evocation
     name: Kyber of the Striking Hand
   11000C03:
-    color: yellow
-    school: divination
-    name: Kyber of the Seeker's Eye
-  11000C00:
-    color: white
-    school: abjuration
-    name: Kyber of Warding
+    color: green
+    school: transmutation
+    name: Kyber of Shaping
   00000C07:
     color: pink
     school: enchantment
@@ -31,3 +23,44 @@ crystals:
     color: black
     school: necromancy
     name: Kyber of the Final Door
+  11000C06:
+    color: blue
+    school: conjuration
+    name: ''
+  00000C00:
+    color: white
+    school: abjuration
+    name: Kyber of Warding
+gamePrizes:
+  trap-disarmament:
+    enabled: true
+    title: Warden's Cache
+    description: Present this screen to the Game Master to claim your Abjuration prize.
+  weave-lock:
+    enabled: true
+    title: Conjurer's Cache
+    description: Present this screen to the Game Master to claim your Conjuration prize.
+  wheel-of-fate:
+    enabled: true
+    title: Seer's Cache
+    description: Present this screen to the Game Master to claim your Divination prize.
+  lying-statues:
+    enabled: true
+    title: Enchanter's Cache
+    description: Present this screen to the Game Master to claim your Enchantment prize.
+  runic-sequence:
+    enabled: true
+    title: Evoker's Cache
+    description: Present this screen to the Game Master to claim your Evocation prize.
+  glyph-matching:
+    enabled: true
+    title: Illusionist's Cache
+    description: Present this screen to the Game Master to claim your Illusion prize.
+  monster-silhouette:
+    enabled: true
+    title: Mortuary Cache
+    description: Present this screen to the Game Master to claim your Necromancy prize.
+  potion-mixing:
+    enabled: true
+    title: Transmuter's Cache
+    description: Present this screen to the Game Master to claim your Transmutation prize.

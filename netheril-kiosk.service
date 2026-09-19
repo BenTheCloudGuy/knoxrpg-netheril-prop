@@ -7,8 +7,12 @@ PartOf=netheril.service
 [Service]
 Type=simple
 User=benthebuilder
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=WAYLAND_DISPLAY=wayland-0
+Environment=MOZ_ENABLE_WAYLAND=1
 Environment=DISPLAY=:0
-ExecStartPre=/bin/bash -c 'for i in $(seq 1 30); do curl -s -o /dev/null http://localhost:3000 && break; sleep 1; done'
+Environment=XAUTHORITY=/home/benthebuilder/.Xauthority
+ExecStartPre=/bin/bash -c 'for i in {1..60}; do [ -S /run/user/1000/wayland-0 ] && curl -sf -o /dev/null http://localhost:3000 && exit 0; sleep 1; done; exit 1'
 ExecStart=/usr/bin/firefox --kiosk http://localhost:3000 --new-instance --no-remote
 Restart=on-failure
 RestartSec=3

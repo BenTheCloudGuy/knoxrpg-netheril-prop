@@ -7,7 +7,6 @@
     "start": "sudo node src/server.js"
   },
   "dependencies": {
-    "@serialport/parser-readline": "^13.0.0",
     "dotenv": "^17.3.1",
     "express": "^4.21.0",
     "js-yaml": "^4.1.1",
