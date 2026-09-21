@@ -54,6 +54,7 @@
     }
     body.color-white  { --accent: 240,240,235; }
     body.color-blue   { --accent: 79,195,247; }
+    body.color-purple { --accent: 156,39,176; }
     body.color-yellow { --accent: 255,213,79; }
     body.color-pink   { --accent: 244,143,177; }
     body.color-red    { --accent: 239,83,80; }
@@ -109,7 +110,7 @@
         drop-shadow(-1px -1px 0 rgba(40,25,10,0.35));
       transition: opacity 0.6s ease, filter 0.6s ease, transform 0.4s ease;
     }
-    body:not(.view-landing) .side-col {
+    body:not(.view-cross) .side-col {
       opacity: 0;
       pointer-events: none;
     }
@@ -524,7 +525,193 @@
       color: rgba(60,42,20,0.72);
     }
 
-    /* ===== Landing view: 2x4 grid of school symbols ===== */
+    /* ===== Crystal attunement page ===== */
+    #crystal-view {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 58px 74px;
+      gap: 64px;
+      pointer-events: auto;
+    }
+    #crystal-view.show { display: flex; }
+    .school-web-panel {
+      position: relative;
+      width: 840px;
+      height: 880px;
+      flex: 0 0 840px;
+    }
+    #school-web-lines {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      overflow: visible;
+      pointer-events: none;
+    }
+    #school-web-lines line {
+      stroke: rgba(60,42,20,0.18);
+      stroke-width: 2;
+      stroke-linecap: round;
+      filter: drop-shadow(0 0 8px rgba(60,42,20,0.10));
+    }
+    #school-web-lines line.active-relation {
+      stroke: rgba(var(--accent),0.78);
+      stroke-width: 5;
+      filter: drop-shadow(0 0 13px rgba(var(--accent),0.68));
+    }
+    .school-node {
+      --node-size: 132px;
+      position: absolute;
+      left: calc(var(--x) - (var(--node-size) / 2));
+      top: calc(var(--y) - (var(--node-size) / 2));
+      width: var(--node-size);
+      height: var(--node-size);
+      border: 2px solid rgba(60,42,20,0.28);
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(255,244,210,0.34), rgba(0,0,0,0.04) 70%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0.28;
+      transition: opacity 0.25s, transform 0.25s, border-color 0.25s, box-shadow 0.25s;
+    }
+    .school-node img {
+      max-width: 82px;
+      max-height: 82px;
+      object-fit: contain;
+      filter:
+        drop-shadow(1px 1px 0 rgba(220,200,160,0.45))
+        drop-shadow(-1px -1px 0 rgba(40,25,10,0.35));
+    }
+    .school-node.active {
+      --node-size: 176px;
+      opacity: 1;
+      border-color: rgba(var(--accent),0.94);
+      box-shadow: 0 0 48px rgba(var(--accent),0.58), inset 0 0 30px rgba(var(--accent),0.18);
+      animation: side-pulse 2.4s ease-in-out infinite;
+    }
+    .school-node.active img {
+      max-width: 118px;
+      max-height: 118px;
+      filter:
+        drop-shadow(1px 1px 0 rgba(220,200,160,0.6))
+        drop-shadow(-1px -1px 0 rgba(40,25,10,0.5))
+        drop-shadow(0 0 26px rgba(var(--accent),0.95));
+    }
+    .school-node.school-abjuration    { --school-accent: 240,240,235; }
+    .school-node.school-conjuration   { --school-accent: 79,195,247; }
+    .school-node.school-divination    { --school-accent: 156,39,176; }
+    .school-node.school-enchantment   { --school-accent: 244,143,177; }
+    .school-node.school-evocation     { --school-accent: 239,83,80; }
+    .school-node.school-illusion      { --school-accent: 255,213,79; }
+    .school-node.school-necromancy    { --school-accent: 140,120,120; }
+    .school-node.school-transmutation { --school-accent: 129,199,132; }
+    .school-node.related {
+      opacity: 0.8;
+      cursor: pointer;
+      border-color: rgba(var(--accent),0.58);
+      box-shadow: 0 0 24px rgba(var(--accent),0.25), inset 0 0 18px rgba(var(--accent),0.12);
+    }
+    .school-node.related:active { transform: scale(0.94); }
+    .attunement-panel {
+      width: 790px;
+      min-height: 650px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 42px 48px;
+      border: none;
+      background: transparent;
+      box-shadow: none;
+    }
+    .attunement-eyebrow {
+      display: none;
+    }
+    .attunement-panel h1 {
+      display: none;
+    }
+    .attunement-school {
+      display: none;
+    }
+    .attunement-location {
+      display: none;
+    }
+    .attunement-message,
+    .attunement-boon {
+      margin: 0;
+      font-family: 'Cinzel', serif;
+      font-size: 40px;
+      line-height: 1.34;
+      letter-spacing: 0.015em;
+      color: rgba(42,27,12,0.96);
+      text-shadow: none;
+      text-align: center;
+    }
+    .attunement-message {
+      max-width: 720px;
+      margin: 0 auto;
+    }
+    .attunement-action {
+      display: block;
+      padding-bottom: 22px;
+      border-bottom: 2px solid rgba(42,27,12,0.38);
+      font-family: 'Cinzel Decorative', 'Cinzel', serif;
+      font-size: 46px;
+      line-height: 1.2;
+      letter-spacing: 0.025em;
+    }
+    .attunement-help {
+      display: block;
+      margin-top: 26px;
+      font-size: 30px;
+      line-height: 1.42;
+      color: rgba(58,39,18,0.88);
+    }
+    .attunement-boon { display: none; }
+    #crystal-view.hand-present .attunement-message { display: none; }
+    #crystal-view.hand-present .attunement-boon { display: block; }
+    .boon-name {
+      display: block;
+      padding-bottom: 10px;
+      margin: 0 auto 26px;
+      border-bottom: 3px solid rgba(42,27,12,0.72);
+      font-family: 'Cinzel Decorative', 'Cinzel', serif;
+      font-size: 58px;
+      line-height: 1.05;
+      letter-spacing: 0.035em;
+      text-align: center;
+      text-transform: uppercase;
+      width: fit-content;
+      max-width: 100%;
+    }
+    .boon-description {
+      font-family: 'Cinzel', serif;
+      font-size: 34px;
+      line-height: 1.38;
+      letter-spacing: 0.01em;
+      max-width: 760px;
+    }
+    .boon-usage {
+      margin: 34px auto 0;
+      padding-top: 18px;
+      max-width: 680px;
+      border-top: 2px solid rgba(42,27,12,0.45);
+      font-family: 'Cinzel Decorative', 'Cinzel', serif;
+      font-size: 29px;
+      line-height: 1.25;
+      letter-spacing: 0.025em;
+      text-align: center;
+      text-transform: uppercase;
+    }
+    .attunement-hint {
+      display: none;
+    }
+
+    /* ===== Landing view: school symbol web ===== */
     #landing-view {
       position: absolute; inset: 0;
       display: none;
@@ -533,55 +720,53 @@
       padding: 30px 20px;
     }
     #landing-view.show { display: flex; }
-
-    .preview-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 220px);
-      grid-template-rows: repeat(2, 220px);
-      gap: 30px 30px;
-      margin-bottom: 38px;
+    #landing-view .school-web-panel {
+      width: 840px;
+      height: 880px;
+      flex: 0 0 auto;
+      margin-bottom: -12px;
     }
-    .preview-cell {
-      position: relative;
-      width: 220px; height: 220px;
-      display: flex; align-items: center; justify-content: center;
-      border-radius: 50%;
-      border: 2px solid rgba(60,42,20,0.35);
-      background: radial-gradient(circle, rgba(0,0,0,0.10) 0%, transparent 75%);
+    #landing-view #landing-school-web-lines line {
+      stroke: rgba(60,42,20,0.22);
+      stroke-width: 2;
+      filter: drop-shadow(0 0 8px rgba(60,42,20,0.10));
     }
-    /* Color halo behind each symbol — uses the crystal's color */
-    .preview-cell::before {
-      content: '';
-      position: absolute; inset: 14px;
-      border-radius: 50%;
-      background: radial-gradient(circle, rgba(var(--cell-accent),0.55) 0%, rgba(var(--cell-accent),0.18) 45%, transparent 75%);
-      filter: blur(6px);
-      animation: cell-pulse 3.4s ease-in-out infinite;
+    #landing-view .school-node {
+      --node-size: 118px;
+      opacity: 0.38;
+      border-color: rgba(60,42,20,0.18);
+      box-shadow: none;
+      background: radial-gradient(circle, rgba(0,0,0,0.06), transparent 70%);
     }
-    .preview-cell img {
-      position: relative;
-      height: 150px; width: auto;
+    #landing-view .school-node img {
+      max-width: 78px;
+      max-height: 78px;
+      filter:
+        drop-shadow(1px 1px 0 rgba(220,200,160,0.55))
+        drop-shadow(-1px -1px 0 rgba(40,25,10,0.45));
+      animation: none;
+    }
+    #landing-view .school-node.found {
+      opacity: 0.9;
+      border-color: rgba(var(--school-accent),0.42);
+      box-shadow: 0 0 24px rgba(var(--school-accent),0.20), inset 0 0 18px rgba(var(--school-accent),0.10);
+      background: radial-gradient(circle, rgba(var(--school-accent),0.18), rgba(0,0,0,0.03) 70%);
+    }
+    #landing-view .school-node.found img {
       filter:
         drop-shadow(1px 1px 0 rgba(220,200,160,0.55))
         drop-shadow(-1px -1px 0 rgba(40,25,10,0.45))
-        drop-shadow(0 0 14px rgba(var(--cell-accent),0.7));
+        drop-shadow(0 0 16px rgba(var(--school-accent),0.82))
+        drop-shadow(0 0 34px rgba(var(--school-accent),0.45));
+      animation: landing-symbol-pulse 3.4s ease-in-out infinite;
     }
-    @keyframes cell-pulse {
-      0%, 100% { opacity: 0.55; }
+    @keyframes landing-symbol-pulse {
+      0%, 100% { opacity: 0.78; }
       50%      { opacity: 1; }
     }
-    /* Per-cell crystal-color overrides */
-    .preview-cell[data-color="white"]  { --cell-accent: 240,240,235; }
-    .preview-cell[data-color="blue"]   { --cell-accent: 79,195,247; }
-    .preview-cell[data-color="yellow"] { --cell-accent: 255,213,79; }
-    .preview-cell[data-color="pink"]   { --cell-accent: 244,143,177; }
-    .preview-cell[data-color="red"]    { --cell-accent: 239,83,80; }
-    .preview-cell[data-color="orange"] { --cell-accent: 255,167,38; }
-    .preview-cell[data-color="black"]  { --cell-accent: 80,70,70; }
-    .preview-cell[data-color="green"]  { --cell-accent: 129,199,132; }
 
     .preview-message {
-      font-family: 'EbonSigil', 'Cinzel Decorative', 'Cinzel', serif;
+      font-family: 'Cinzel', 'Cinzel Decorative', serif;
       font-weight: 700;
       font-size: 56px;
       line-height: 1.25;
@@ -643,31 +828,6 @@
       background: rgba(0,0,0,0.08); padding: 2px 6px; border-radius: 3px;
     }
 
-    #page-close {
-      position: absolute; top: 24px; right: 24px;
-      width: 72px; height: 72px;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      border: 2px solid rgba(var(--accent),0.4);
-      background: rgba(0,0,0,0.15);
-      cursor: pointer;
-      color: rgba(60,42,20,0.9);
-      font-family: 'Cuneiform', sans-serif;
-      font-size: 44px; line-height: 1;
-      z-index: 5;
-    }
-    #page-close:hover { border-color: rgba(var(--accent),0.85); box-shadow: 0 0 24px rgba(var(--accent),0.35); }
-    #page-close:active { transform: scale(0.92); }
-
-    /* ===== Misc ===== */
-    #exit-btn {
-      position: fixed; top: 8px; right: 12px;
-      font-family: 'Cuneiform', sans-serif; font-size: 0.8rem;
-      color: rgba(60,42,20,0.3); background: none; border: none;
-      cursor: pointer; padding: 6px 10px; z-index: 100;
-    }
-    #exit-btn:active { color: #ef5350; }
-
     @keyframes fade-in {
       from { opacity: 0; transform: scale(0.97); }
       to   { opacity: 1; transform: scale(1); }
@@ -676,9 +836,27 @@
   </style>
 </head>
 <body>
-  <button id="exit-btn">[EXIT]</button>
-
   <div id="app">
+    <div id="crystal-view">
+      <div class="school-web-panel">
+        <svg id="school-web-lines" viewBox="0 0 840 880" aria-hidden="true"></svg>
+        <div id="school-web-nodes"></div>
+      </div>
+
+      <div class="attunement-panel">
+        <div class="attunement-eyebrow">Crystal Attunement</div>
+        <h1 id="crystal-title">Crystal</h1>
+        <div class="attunement-school" id="crystal-school-name"></div>
+        <div class="attunement-location" id="crystal-location"></div>
+        <div class="attunement-message">
+          <span class="attunement-action">Place your hand on the device to reveal this crystal's boon.</span>
+          <span class="attunement-help">Select one of the glowing aligned schools of magic to seek additional help.</span>
+        </div>
+        <div class="attunement-boon" id="crystal-boon"></div>
+        <div class="attunement-hint">Touch a glowing linked school to reveal a clue. Swipe down on the clue page to close it.</div>
+      </div>
+    </div>
+
     <!-- LEFT: 4 school icons -->
     <div class="side-col" id="left-col">
       <div class="side-block" data-school="abjuration"><img src="/img/schools/abjuration.png" alt="abjuration"></div>
@@ -700,21 +878,14 @@
       </div>
 
       <div id="landing-view">
-        <div class="preview-grid">
-          <div class="preview-cell" data-color="white"><img src="/img/schools/abjuration.png"    alt="abjuration"></div>
-          <div class="preview-cell" data-color="blue"><img src="/img/schools/conjuration.png"   alt="conjuration"></div>
-          <div class="preview-cell" data-color="yellow"><img src="/img/schools/divination.png"  alt="divination"></div>
-          <div class="preview-cell" data-color="pink"><img src="/img/schools/enchantment.png"   alt="enchantment"></div>
-          <div class="preview-cell" data-color="red"><img src="/img/schools/evocation.png"      alt="evocation"></div>
-          <div class="preview-cell" data-color="orange"><img src="/img/schools/illusion.png"    alt="illusion"></div>
-          <div class="preview-cell" data-color="black"><img src="/img/schools/necromancy.png"   alt="necromancy"></div>
-          <div class="preview-cell" data-color="green"><img src="/img/schools/transmutation.png" alt="transmutation"></div>
+        <div class="school-web-panel landing-school-web">
+          <svg id="landing-school-web-lines" viewBox="0 0 840 880" aria-hidden="true"></svg>
+          <div id="landing-school-web-nodes"></div>
         </div>
-        <div class="preview-message">Seek the crystals to unlock the treasures, clues, and dangers.</div>
+        <div class="preview-message" id="landing-message">Seek the crystals to unlock the treasures, clues, and dangers.</div>
       </div>
-
       <div id="page-view">
-        <button id="page-close" title="close">&#x12471;</button>
+      <div id="page-view">
         <div id="page-scroll">
           <div id="page-content"></div>
         </div>
@@ -759,15 +930,24 @@
     const pageView       = document.getElementById('page-view');
     const pageContent    = document.getElementById('page-content');
     const pageScroll     = document.getElementById('page-scroll');
-    const pageClose      = document.getElementById('page-close');
     const landingView    = document.getElementById('landing-view');
+    const crystalView    = document.getElementById('crystal-view');
+    const schoolWebLines = document.getElementById('school-web-lines');
+    const schoolWebNodes = document.getElementById('school-web-nodes');
+    const landingSchoolWebLines = document.getElementById('landing-school-web-lines');
+    const landingSchoolWebNodes = document.getElementById('landing-school-web-nodes');
+    const landingMessage = document.getElementById('landing-message');
+    const crystalTitle   = document.getElementById('crystal-title');
+    const crystalSchoolName = document.getElementById('crystal-school-name');
+    const crystalLocation = document.getElementById('crystal-location');
+    const crystalBoon    = document.getElementById('crystal-boon');
     const gameView       = document.getElementById('game-view');
     const gameBoard      = document.getElementById('game-board');
     const gameResult     = document.getElementById('game-result');
     const prizeView      = document.getElementById('prize-view');
     const sideBlocks     = document.querySelectorAll('.side-block');
 
-    const COLOR_CLASSES = ['color-white','color-blue','color-yellow','color-pink','color-red','color-orange','color-black','color-green'];
+    const COLOR_CLASSES = ['color-white','color-blue','color-purple','color-yellow','color-pink','color-red','color-orange','color-black','color-green'];
 
     function fitAppToViewport() {
       const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
@@ -783,13 +963,74 @@
     let currentView   = 'landing';
     let currentInsertionId = null;
     let currentGameId = null;
+    let currentCrystalData = null;
+    let handPresent = false;
     let gameFails = 0;
     let gameLocked = false;
     let gameTimers = [];
     let gameCleanup = null;
     let gameCompleted = false;
+    let foundExitSchools = new Set();
+    let portalUnlocked = false;
 
     const GAME_SCHOOLS = ['abjuration','conjuration','divination','enchantment','evocation','illusion','necromancy','transmutation'];
+    const SCHOOL_LABELS = {
+      abjuration: 'Abjuration',
+      conjuration: 'Conjuration',
+      divination: 'Divination',
+      enchantment: 'Enchantment',
+      evocation: 'Evocation',
+      illusion: 'Illusion',
+      necromancy: 'Necromancy',
+      transmutation: 'Transmutation',
+    };
+    const SCHOOL_POSITIONS = {
+      illusion: { x: 420, y: 86 },
+      enchantment: { x: 656, y: 176 },
+      conjuration: { x: 754, y: 440 },
+      abjuration: { x: 656, y: 704 },
+      necromancy: { x: 420, y: 794 },
+      evocation: { x: 184, y: 704 },
+      divination: { x: 86, y: 440 },
+      transmutation: { x: 184, y: 176 },
+    };
+    const SCHOOL_WEB_LINES = [
+      ['illusion', 'enchantment'],
+      ['enchantment', 'conjuration'],
+      ['conjuration', 'abjuration'],
+      ['abjuration', 'necromancy'],
+      ['necromancy', 'evocation'],
+      ['evocation', 'divination'],
+      ['divination', 'transmutation'],
+      ['transmutation', 'illusion'],
+      ['illusion', 'conjuration'],
+      ['conjuration', 'necromancy'],
+      ['necromancy', 'divination'],
+      ['divination', 'illusion'],
+      ['transmutation', 'enchantment'],
+      ['enchantment', 'abjuration'],
+      ['abjuration', 'evocation'],
+      ['evocation', 'transmutation'],
+      ['illusion', 'necromancy'],
+      ['divination', 'conjuration'],
+      ['transmutation', 'abjuration'],
+      ['enchantment', 'evocation'],
+    ];
+    const DEFAULT_RELATIONS = {
+      abjuration: { opposing: ['transmutation'], adjoining: ['enchantment','evocation'] },
+      conjuration: { opposing: ['divination'], adjoining: ['illusion','necromancy'] },
+      divination: { opposing: ['conjuration'], adjoining: ['illusion','necromancy'] },
+      enchantment: { opposing: ['evocation'], adjoining: ['abjuration','transmutation'] },
+      evocation: { opposing: ['enchantment'], adjoining: ['transmutation','abjuration'] },
+      illusion: { opposing: ['necromancy'], adjoining: ['conjuration','divination'] },
+      necromancy: { opposing: ['illusion'], adjoining: ['divination','conjuration'] },
+      transmutation: { opposing: ['abjuration'], adjoining: ['enchantment','evocation'] },
+    };
+    const RELATION_LOCATIONS = {
+      opposing: 'top',
+      adjoining0: 'left',
+      adjoining1: 'right',
+    };
     const SCHOOL_GAMES = {
       abjuration:    { id: 'trap-disarmament', name: 'Trap Disarmament', start: startTrapGame },
       conjuration:   { id: 'weave-lock', name: 'Weave Lock', start: startWeaveGame },
@@ -829,13 +1070,14 @@
     }
 
     // ===== View transitions =====
-    const VIEW_CLASSES = ['view-landing','view-cross','view-page','view-game','view-prize'];
+    const VIEW_CLASSES = ['view-landing','view-crystal','view-cross','view-page','view-game','view-prize'];
     function setViewClass(view) {
       VIEW_CLASSES.forEach(c => document.body.classList.remove(c));
       document.body.classList.add('view-' + view);
     }
 
     function hideAllViews() {
+      crystalView.classList.remove('show');
       crossView.classList.remove('show');
       pageView.classList.remove('show');
       landingView.classList.remove('show');
@@ -847,8 +1089,172 @@
       hideAllViews();
       currentView = 'landing';
       setViewClass('landing');
+      renderLandingSchoolWeb();
       landingView.classList.add('show', 'fade-in');
       clearSchoolHighlight();
+    }
+
+    function updateLandingState(data) {
+      if (Array.isArray(data?.foundExitSchools)) foundExitSchools = new Set(data.foundExitSchools);
+      if (data?.portalUnlocked !== undefined) portalUnlocked = data.portalUnlocked === true;
+    }
+
+    function getRelationsForCrystal(data) {
+      const school = data?.school || currentSchool;
+      const defaults = DEFAULT_RELATIONS[school] || { opposing: [], adjoining: [] };
+      const opposing = Array.isArray(data?.opposingSchools) && data.opposingSchools.length
+        ? data.opposingSchools
+        : defaults.opposing;
+      const adjoining = Array.isArray(data?.adjoiningSchools) && data.adjoiningSchools.length
+        ? data.adjoiningSchools
+        : defaults.adjoining;
+      return {
+        opposing: opposing.filter(schoolName => GAME_SCHOOLS.includes(schoolName)),
+        adjoining: adjoining.filter(schoolName => GAME_SCHOOLS.includes(schoolName)),
+      };
+    }
+
+    function relationLocation(relation, index) {
+      if (relation === 'opposing') return RELATION_LOCATIONS.opposing;
+      return RELATION_LOCATIONS['adjoining' + index] || 'bottom';
+    }
+
+    function relationLineKey(a, b) {
+      return [a, b].sort().join('|');
+    }
+
+    function renderSchoolWebLines(linesElement, highlightedLines = new Set()) {
+      linesElement.innerHTML = '';
+      SCHOOL_WEB_LINES.forEach(([from, to]) => {
+        const fromPosition = SCHOOL_POSITIONS[from];
+        const toPosition = SCHOOL_POSITIONS[to];
+        if (!fromPosition || !toPosition) return;
+        const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+        line.setAttribute('x1', fromPosition.x);
+        line.setAttribute('y1', fromPosition.y);
+        line.setAttribute('x2', toPosition.x);
+        line.setAttribute('y2', toPosition.y);
+        if (highlightedLines.has(relationLineKey(from, to))) line.classList.add('active-relation');
+        linesElement.appendChild(line);
+      });
+    }
+
+    function renderLandingSchoolWeb() {
+      landingSchoolWebNodes.innerHTML = '';
+      renderSchoolWebLines(landingSchoolWebLines);
+
+      GAME_SCHOOLS.forEach(school => {
+        const position = SCHOOL_POSITIONS[school];
+        const button = document.createElement('button');
+        button.className = 'school-node school-' + school;
+        if (foundExitSchools.has(school)) button.classList.add('found');
+        button.style.setProperty('--x', position.x + 'px');
+        button.style.setProperty('--y', position.y + 'px');
+        button.dataset.school = school;
+        button.type = 'button';
+        button.disabled = true;
+        button.setAttribute('aria-label', SCHOOL_LABELS[school]);
+
+        const image = document.createElement('img');
+        image.src = '/img/schools/' + school + '.png';
+        image.alt = SCHOOL_LABELS[school];
+        button.appendChild(image);
+
+        landingSchoolWebNodes.appendChild(button);
+      });
+      landingMessage.textContent = portalUnlocked
+        ? 'The portal now lays open and your path to freedom with it'
+        : 'Seek the crystals to unlock the treasures, clues, and dangers.';
+    }
+
+    function renderSchoolWeb(data) {
+      const activeSchool = data?.school || currentSchool;
+      const relations = getRelationsForCrystal(data);
+      const related = new Map();
+      relations.opposing.forEach((school, index) => related.set(school, { type: 'opposing', index }));
+      relations.adjoining.forEach((school, index) => related.set(school, { type: 'adjoining', index }));
+
+      schoolWebLines.innerHTML = '';
+      schoolWebNodes.innerHTML = '';
+
+      const highlightedLines = new Set();
+      if (SCHOOL_POSITIONS[activeSchool]) {
+        related.forEach((_meta, school) => highlightedLines.add(relationLineKey(activeSchool, school)));
+      }
+      renderSchoolWebLines(schoolWebLines, highlightedLines);
+
+      GAME_SCHOOLS.forEach(school => {
+        const position = SCHOOL_POSITIONS[school];
+        const button = document.createElement('button');
+        button.className = 'school-node school-' + school;
+        button.style.setProperty('--x', position.x + 'px');
+        button.style.setProperty('--y', position.y + 'px');
+        button.dataset.school = school;
+        button.type = 'button';
+        button.setAttribute('aria-label', SCHOOL_LABELS[school]);
+
+        const image = document.createElement('img');
+        image.src = '/img/schools/' + school + '.png';
+        image.alt = SCHOOL_LABELS[school];
+        button.appendChild(image);
+
+        if (school === activeSchool) {
+          button.classList.add('active');
+          button.disabled = true;
+        } else if (related.has(school)) {
+          const meta = related.get(school);
+          button.classList.add('related', meta.type);
+          button.addEventListener('click', () => {
+            playOrbSelect();
+            loadPage(activeSchool, relationLocation(meta.type, meta.index));
+          });
+          button.addEventListener('touchend', event => {
+            event.preventDefault();
+            playOrbSelect();
+            loadPage(activeSchool, relationLocation(meta.type, meta.index));
+          });
+        } else {
+          button.disabled = true;
+        }
+
+        schoolWebNodes.appendChild(button);
+      });
+    }
+
+    function renderBoonText(rawBoon) {
+      const text = String(rawBoon || 'No boon has been recorded for this crystal yet.').trim();
+      const titleMatch = text.match(/^([^:]+):\s*(.*)$/);
+      const title = titleMatch ? titleMatch[1].trim() : 'Crystal Boon';
+      let body = titleMatch ? titleMatch[2].trim() : text;
+      let usage = '';
+      const usageMatch = body.match(/(?:^|\s)(Can only be used[^.]*\.?)\s*$/i);
+      if (usageMatch) {
+        usage = usageMatch[1].trim();
+        body = body.slice(0, usageMatch.index).trim();
+      }
+      crystalBoon.innerHTML =
+        '<div class="boon-name">' + escHtml(title) + '</div>' +
+        '<div class="boon-description">' + escHtml(body) + '</div>' +
+        (usage ? '<div class="boon-usage">' + escHtml(usage) + '</div>' : '');
+    }
+
+    function showCrystalView() {
+      if (!crystalActive || !currentSchool) {
+        showLandingView();
+        return;
+      }
+      hideAllViews();
+      currentView = 'crystal';
+      setViewClass('crystal');
+      const data = currentCrystalData || {};
+      crystalTitle.textContent = data.label || data.name || SCHOOL_LABELS[currentSchool] || 'Crystal';
+      crystalSchoolName.textContent = (SCHOOL_LABELS[currentSchool] || currentSchool) + ' Crystal';
+      crystalLocation.textContent = data.location || 'The Scrying Stone studies the crystal for a location clue.';
+      renderBoonText(data.boon);
+      crystalView.classList.toggle('hand-present', handPresent);
+      renderSchoolWeb(data);
+      crystalView.classList.add('show', 'fade-in');
+      highlightSchool(currentSchool);
     }
 
     function showCrossView() {
@@ -1372,12 +1778,12 @@
     });
     document.getElementById('game-result-action').addEventListener('click', () => {
       cleanupActiveGame();
-      if (crystalActive) showCrossView();
+      if (crystalActive) showCrystalView();
       else showLandingView();
     });
     document.getElementById('game-close').addEventListener('click', () => {
       cleanupActiveGame();
-      if (crystalActive) showCrossView();
+      if (crystalActive) showCrystalView();
       else showLandingView();
     });
 
@@ -1385,19 +1791,21 @@
     function handlePageClose(e) {
       e.preventDefault();
       playOrbSelect();
-      if (crystalActive) showCrossView();
+      if (crystalActive) showCrystalView();
       else               showLandingView();
     }
-    pageClose.addEventListener('click',    handlePageClose);
-    pageClose.addEventListener('touchend', handlePageClose);
-
-    // ===== Exit =====
-    function handleExit(e) {
-      e.stopPropagation(); e.preventDefault();
-      fetch('/exit', { method: 'POST' }).finally(() => window.close());
-    }
-    document.getElementById('exit-btn').addEventListener('click', handleExit);
-    document.getElementById('exit-btn').addEventListener('touchend', handleExit);
+    let pageTouchStartY = null;
+    pageView.addEventListener('touchstart', event => {
+      pageTouchStartY = event.changedTouches && event.changedTouches[0]
+        ? event.changedTouches[0].clientY
+        : null;
+    }, { passive: true });
+    pageView.addEventListener('touchend', event => {
+      if (pageTouchStartY === null || !event.changedTouches || !event.changedTouches[0]) return;
+      const deltaY = event.changedTouches[0].clientY - pageTouchStartY;
+      pageTouchStartY = null;
+      if (deltaY > 90) handlePageClose(event);
+    });
 
     // Prevent rubber-band scroll on touch except inside page scroll area
     document.addEventListener('touchmove', (e) => {
@@ -1414,6 +1822,7 @@
 
       ws.onmessage = (event) => {
         const data = JSON.parse(event.data);
+        updateLandingState(data);
 
         if (data.type === 'crystal') {
           const sameInsertion = Boolean(currentInsertionId && currentInsertionId === data.insertionId);
@@ -1423,13 +1832,17 @@
           currentSchool = data.school || null;
           currentColor  = data.color  || null;
           currentGameId = data.gameId || SCHOOL_GAMES[currentSchool]?.id || null;
+          currentCrystalData = data;
+          handPresent = data.handPresent === true;
           gameCompleted = data.gameCompleted === true || data.glyphPrizeClaimed === true;
           setAccentColor(currentColor);
           if (!sameInsertion) playCrystalChime();
           if (gameCompleted && data.prize) {
             setTimeout(() => showPrizePage(data.prize), 400);
-          } else if (!sameInsertion || !['cross','page','game'].includes(currentView)) {
-            setTimeout(() => showCrossView(), 400);
+          } else if (!sameInsertion || !['crystal','page','game'].includes(currentView)) {
+            setTimeout(() => showCrystalView(), 400);
+          } else if (currentView === 'crystal') {
+            showCrystalView();
           }
 
         } else if (data.type === 'removed') {
@@ -1440,9 +1853,25 @@
           currentGameId = null;
           currentSchool = null;
           currentColor  = null;
+          currentCrystalData = null;
+          handPresent = false;
           setAccentColor(null);
           clearSchoolHighlight();
           showLandingView();
+
+        } else if (data.type === 'hand-on') {
+          handPresent = true;
+          if (currentView === 'crystal') crystalView.classList.add('hand-present');
+
+        } else if (data.type === 'hand-off') {
+          handPresent = false;
+          if (currentView === 'crystal') crystalView.classList.remove('hand-present');
+
+        } else if (data.type === 'swipe-down') {
+          if (currentView === 'page') {
+            if (crystalActive) showCrystalView();
+            else showLandingView();
+          }
 
         } else if (data.type === 'reload') {
           location.reload();

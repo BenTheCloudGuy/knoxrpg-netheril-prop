@@ -46,6 +46,10 @@ const PORT = 3000;
 const GM_PORT = 3001;
 const SERIAL_PATH = '/dev/serial0';
 const SERIAL_BAUD = 9600;
+const MOTION_PATH = process.env.MOTION_PORT || '/dev/ttyACM0';
+const MOTION_BAUD = 115200;
+const HAND_ON_THRESHOLD = Number(process.env.HAND_ON_THRESHOLD) || 230;
+const HAND_OFF_TIMEOUT = Number(process.env.HAND_OFF_TIMEOUT_MS) || 1000;
 
 // --- RGB LED Ring ---
 const NUM_LEDS = 6;
@@ -67,6 +71,7 @@ if (!SIM_MODE) {
 const LED_COLORS = {
   blue:    0x0000FF,
   green:   0x00FF00,
+  purple:  0x8000FF,
   red:     0xFF0000,
   yellow:  0xFFFF00,
   white:   0xFFFFFF,
@@ -80,9 +85,10 @@ const LED_COLORS = {
 const COLOR_TO_SCHOOL = {
   white:  'abjuration',
   blue:   'conjuration',
-  yellow: 'divination',
+  purple: 'divination',
   pink:   'enchantment',
   red:    'evocation',
+  yellow: 'illusion',
   orange: 'illusion',
   black:  'necromancy',
   green:  'transmutation',
@@ -208,6 +214,7 @@ function saveConfig(config) {
 let config = loadConfig();
 
 const CRYSTAL_MAP = {};
+const foundExitSchools = new Set();
 
 function rebuildCrystalMap() {
   Object.keys(CRYSTAL_MAP).forEach(k => delete CRYSTAL_MAP[k]);
@@ -215,9 +222,15 @@ function rebuildCrystalMap() {
     const color = String(c.color || 'unknown').toLowerCase();
     const school = c.school || COLOR_TO_SCHOOL[color] || null;
     CRYSTAL_MAP[hex.toUpperCase()] = {
+      type: c.type === 'lesser' ? 'lesser' : 'exit',
       color,
       school,
       name: c.name || '',
+      label: c.label || c.name || '',
+      location: c.location || '',
+      boon: c.boon || '',
+      opposingSchools: Array.isArray(c.opposingSchools) ? c.opposingSchools : [],
+      adjoiningSchools: Array.isArray(c.adjoiningSchools) ? c.adjoiningSchools : [],
     };
   }
 }
@@ -226,6 +239,17 @@ rebuildCrystalMap();
 function lookupCrystal(tagHex) {
   const key = tagHex.toUpperCase();
   return CRYSTAL_MAP[key] || { color: 'unknown', school: null, name: '' };
+}
+
+function getLandingState() {
+  return {
+    foundExitSchools: [...foundExitSchools],
+    portalUnlocked: foundExitSchools.size >= 8,
+  };
+}
+
+function broadcastCurrentPlayerState() {
+  broadcast(getCrystalSnapshot());
 }
 
 // --- RDM6300 RFID Reader ---
@@ -237,6 +261,8 @@ let lastSeenTime = 0;
 let insertionCounter = 0;
 let activeInsertion = null;
 let emulatedCrystal = false;
+let handPresent = false;
+let lastMotionLowTime = null;
 // ms with no RDM6300 frame before a crystal is treated as removed. The real
 // reader delivers valid frames only about every ~520 ms when a crystal rests
 // in the seated position (marginal antenna coupling), so a 500 ms timeout
@@ -256,7 +282,7 @@ function getGamePrize(gameId) {
 }
 
 function getCrystalSnapshot() {
-  if (currentCrystal === null || !currentCrystalInfo || !activeInsertion) return { type: 'removed' };
+  if (currentCrystal === null || !currentCrystalInfo || !activeInsertion) return { type: 'removed', ...getLandingState() };
   const gameId = SCHOOL_GAMES[currentCrystalInfo.school] || null;
   const gameCompleted = activeInsertion.completedGameId === gameId;
   return {
@@ -265,13 +291,21 @@ function getCrystalSnapshot() {
     tagId: currentCrystal,
     tagHex: currentCrystalHex,
     color: currentCrystalInfo.color,
+    crystalType: currentCrystalInfo.type,
     school: currentCrystalInfo.school,
     name: currentCrystalInfo.name,
+    label: currentCrystalInfo.label,
+    location: currentCrystalInfo.location,
+    boon: currentCrystalInfo.boon,
+    opposingSchools: currentCrystalInfo.opposingSchools,
+    adjoiningSchools: currentCrystalInfo.adjoiningSchools,
+    handPresent,
     emulated: emulatedCrystal,
     gameId,
     gameCompleted,
     glyphPrizeClaimed: gameId === 'glyph-matching' && gameCompleted,
     prize: gameCompleted ? getGamePrize(gameId) : undefined,
+    ...getLandingState(),
   };
 }
 
@@ -283,6 +317,7 @@ function simulateCrystalInsert(tagHex, emulated = false) {
   emulatedCrystal = emulated;
   const info = lookupCrystal(tagHex);
   currentCrystalInfo = info;
+  if (info.type === 'exit' && info.school) foundExitSchools.add(info.school);
   activeInsertion = {
     id: `${Date.now()}-${++insertionCounter}`,
     completedGameId: null,
@@ -303,7 +338,14 @@ function simulateCrystalRemove() {
   emulatedCrystal = false;
   serialBuffer = ''; // discard any partial frame left over from the moment of removal
   try { ledOff(); } catch (e) { console.error('ledOff failed:', e.message); }
-  broadcast({ type: 'removed' });
+  broadcast({ type: 'removed', ...getLandingState() });
+}
+
+function setHandPresent(nextValue, emulated = false) {
+  if (handPresent === nextValue) return;
+  handPresent = nextValue;
+  console.log(`${emulated ? '[SIM] ' : ''}Hand ${handPresent ? 'on' : 'off'}`);
+  broadcast({ type: handPresent ? 'hand-on' : 'hand-off' });
 }
 
 app.post('/api/games/:gameId/complete', (req, res) => {
@@ -440,6 +482,55 @@ if (!SIM_MODE) {
   }, 50);
 } // end !SIM_MODE RFID
 
+// --- Kano Motion Sensor ---
+if (!SIM_MODE) {
+  const motion = new SerialPort({ path: MOTION_PATH, baudRate: MOTION_BAUD });
+  let motionBuffer = '';
+
+  motion.on('open', () => {
+    console.log(`Motion serial open: ${MOTION_PATH} @ ${MOTION_BAUD}`);
+  });
+
+  motion.on('error', (err) => {
+    console.error('Motion serial error:', err.message);
+  });
+
+  motion.on('data', (chunk) => {
+    motionBuffer += chunk.toString('utf8');
+    if (motionBuffer.length > 4096) {
+      motionBuffer = motionBuffer.substring(motionBuffer.length - 4096);
+    }
+
+    while (true) {
+      const newline = motionBuffer.indexOf('\n');
+      if (newline === -1) break;
+      const line = motionBuffer.substring(0, newline).trim();
+      motionBuffer = motionBuffer.substring(newline + 1);
+      if (!line) continue;
+
+      try {
+        const message = JSON.parse(line);
+        const proximity = Number(message && message.detail && message.detail.proximity);
+        if (!Number.isFinite(proximity)) continue;
+        if (proximity >= HAND_ON_THRESHOLD) {
+          lastMotionLowTime = null;
+          setHandPresent(true);
+        } else if (handPresent && lastMotionLowTime === null) {
+          lastMotionLowTime = Date.now();
+        }
+      } catch (error) {
+        console.warn('Motion parse failed:', error.message);
+      }
+    }
+  });
+
+  setInterval(() => {
+    if (handPresent && lastMotionLowTime !== null && Date.now() - lastMotionLowTime > HAND_OFF_TIMEOUT) {
+      setHandPresent(false);
+    }
+  }, 100);
+}
+
 // Send current state to newly connected clients
 wss.on('connection', (ws) => {
   ws.send(JSON.stringify(getCrystalSnapshot()));
@@ -534,6 +625,8 @@ gmApp.post('/api/reload-player', (_req, res) => {
 gmApp.get('/api/emulation/status', (_req, res) => {
   res.json({
     active: emulatedCrystal,
+    handPresent,
+    landing: getLandingState(),
     crystal: emulatedCrystal ? getCrystalSnapshot() : null,
     crystals: Object.entries(config.crystals || {}).map(([hex, crystal]) => ({
       hex,
@@ -554,7 +647,28 @@ gmApp.post('/api/emulation/crystal', (req, res) => {
 
 gmApp.post('/api/emulation/crystal-remove', (_req, res) => {
   if (emulatedCrystal) simulateCrystalRemove();
-  res.json({ ok: true, active: false });
+  res.json({ ok: true, active: false, landing: getLandingState() });
+});
+
+gmApp.post('/api/emulation/crystal-status-reset', (_req, res) => {
+  foundExitSchools.clear();
+  broadcastCurrentPlayerState();
+  res.json({ ok: true, landing: getLandingState() });
+});
+
+gmApp.post('/api/emulation/hand-on', (_req, res) => {
+  setHandPresent(true, true);
+  res.json({ ok: true, handPresent });
+});
+
+gmApp.post('/api/emulation/hand-off', (_req, res) => {
+  setHandPresent(false, true);
+  res.json({ ok: true, handPresent });
+});
+
+gmApp.post('/api/emulation/swipe-down', (_req, res) => {
+  broadcast({ type: 'swipe-down' });
+  res.json({ ok: true });
 });
 
 // --- GM Game Prizes ---
@@ -594,10 +708,38 @@ function findCrystalKey(hexParam) {
 gmApp.get('/api/crystals', (_req, res) => {
   const crystals = config.crystals || {};
   const list = Object.entries(crystals).map(([hex, c]) => ({
-    hex, color: c.color, school: c.school || COLOR_TO_SCHOOL[c.color] || null, name: c.name,
+    hex,
+    type: c.type === 'lesser' ? 'lesser' : 'exit',
+    color: c.color,
+    school: c.school || COLOR_TO_SCHOOL[c.color] || null,
+    name: c.name,
+    label: c.label || '',
+    location: c.location || '',
+    boon: c.boon || '',
+    opposingSchools: Array.isArray(c.opposingSchools) ? c.opposingSchools : [],
+    adjoiningSchools: Array.isArray(c.adjoiningSchools) ? c.adjoiningSchools : [],
   }));
   res.json(list);
 });
+
+function normalizeSchoolList(value) {
+  if (Array.isArray(value)) {
+    return value.map(item => String(item || '').trim().toLowerCase()).filter(item => VALID_SCHOOLS.has(item));
+  }
+  return String(value || '')
+    .split(',')
+    .map(item => item.trim().toLowerCase())
+    .filter(item => VALID_SCHOOLS.has(item));
+}
+
+function applyCrystalMetadata(target, body) {
+  if (body.type !== undefined) target.type = body.type === 'lesser' ? 'lesser' : 'exit';
+  if (body.label !== undefined) target.label = String(body.label || '').slice(0, 100);
+  if (body.location !== undefined) target.location = String(body.location || '').slice(0, 500);
+  if (body.boon !== undefined) target.boon = String(body.boon || '').slice(0, 1000);
+  if (body.opposingSchools !== undefined) target.opposingSchools = normalizeSchoolList(body.opposingSchools);
+  if (body.adjoiningSchools !== undefined) target.adjoiningSchools = normalizeSchoolList(body.adjoiningSchools);
+}
 
 gmApp.post('/api/crystals', (req, res) => {
   const { hex, color, name } = req.body;
@@ -606,10 +748,12 @@ gmApp.post('/api/crystals', (req, res) => {
   const colorLc = String(color).slice(0, 50).toLowerCase();
   if (!config.crystals) config.crystals = {};
   config.crystals[key] = {
+    type: req.body && req.body.type === 'lesser' ? 'lesser' : 'exit',
     color: colorLc,
     school: COLOR_TO_SCHOOL[colorLc] || null,
     name: String(name || '').slice(0, 100),
   };
+  applyCrystalMetadata(config.crystals[key], req.body || {});
   saveConfig(config);
   rebuildCrystalMap();
   res.status(201).json({ hex: key, ...config.crystals[key] });
@@ -625,6 +769,7 @@ gmApp.put('/api/crystals/:hex', (req, res) => {
     config.crystals[key].school = COLOR_TO_SCHOOL[colorLc] || null;
   }
   if (name !== undefined) config.crystals[key].name = String(name).slice(0, 100);
+  applyCrystalMetadata(config.crystals[key], req.body || {});
   saveConfig(config);
   rebuildCrystalMap();
   res.json({ hex: key, ...config.crystals[key] });
@@ -904,6 +1049,7 @@ if (SIM_MODE) {
     res.json({
       simMode: true,
       crystalActive: currentCrystal !== null,
+      handPresent,
       currentCrystal: currentCrystal ? currentCrystal.toString(16).padStart(8, '0').toUpperCase() : null,
       crystals: Object.entries(config.crystals || {}).map(([hex, c]) => ({ hex, color: c.color })),
     });
@@ -920,6 +1066,16 @@ if (SIM_MODE) {
   gmApp.post('/api/sim/crystal-remove', (_req, res) => {
     simulateCrystalRemove();
     res.json({ ok: true });
+  });
+
+  gmApp.post('/api/sim/hand-on', (_req, res) => {
+    setHandPresent(true, true);
+    res.json({ ok: true, handPresent });
+  });
+
+  gmApp.post('/api/sim/hand-off', (_req, res) => {
+    setHandPresent(false, true);
+    res.json({ ok: true, handPresent });
   });
 
   // Serve simulator page

@@ -1,66 +1,170 @@
 crystals:
-  00000C0E:
-    color: blue
-    school: conjuration
-    name: Kyber of Calling
-  00000C09:
-    color: red
-    school: evocation
-    name: Kyber of the Striking Hand
-  11000C03:
-    color: green
-    school: transmutation
-    name: Kyber of Shaping
-  00000C07:
-    color: pink
-    school: enchantment
-    name: Kyber of the Whispered Word
-  00000C0A:
-    color: orange
-    school: illusion
-    name: Kyber of the Painted Veil
-  11000C33:
-    color: black
-    school: necromancy
-    name: Kyber of the Final Door
-  11000C06:
-    color: blue
-    school: conjuration
-    name: ''
   00000C00:
+    type: exit
     color: white
     school: abjuration
     name: Kyber of Warding
-gamePrizes:
-  trap-disarmament:
-    enabled: true
-    title: Warden's Cache
-    description: Present this screen to the Game Master to claim your Abjuration prize.
-  weave-lock:
-    enabled: true
-    title: Conjurer's Cache
-    description: Present this screen to the Game Master to claim your Conjuration prize.
-  wheel-of-fate:
-    enabled: true
-    title: Seer's Cache
-    description: Present this screen to the Game Master to claim your Divination prize.
-  lying-statues:
-    enabled: true
-    title: Enchanter's Cache
-    description: Present this screen to the Game Master to claim your Enchantment prize.
-  runic-sequence:
-    enabled: true
-    title: Evoker's Cache
-    description: Present this screen to the Game Master to claim your Evocation prize.
-  glyph-matching:
-    enabled: true
-    title: Illusionist's Cache
-    description: Present this screen to the Game Master to claim your Illusion prize.
-  monster-silhouette:
-    enabled: true
-    title: Mortuary Cache
-    description: Present this screen to the Game Master to claim your Necromancy prize.
-  potion-mixing:
-    enabled: true
-    title: Transmuter's Cache
-    description: Present this screen to the Game Master to claim your Transmutation prize.
+    label: White
+    location: Slime Room. This is a key.
+    boon: 'Ward Against Ruin: When you or a creature within 30 feet makes a saving throw, use your reaction to give that creature advantage on the roll. Can only be used 1 time per game hour.'
+    opposingSchools:
+      - transmutation
+    adjoiningSchools:
+      - enchantment
+      - evocation
+  00000C04:
+    type: exit
+    color: green
+    school: transmutation
+    name: Kyber of Shaping
+    label: Green
+    location: Alchemist Workshop. This is a key.
+    boon: 'Burst of Motion: As a bonus action, choose yourself or one willing creature you can see within 30 feet. The target can immediately move up to its Speed without provoking Opportunity Attacks, or immediately make one weapon attack. Can only be used 1 time per game hour.'
+    opposingSchools:
+      - abjuration
+    adjoiningSchools:
+      - enchantment
+      - evocation
+  11000C0A:
+    type: exit
+    color: yellow
+    school: illusion
+    name: Kyber of the Painted Veil
+    label: Yellow
+    location: Goblin Camp. This is a key.
+    boon: 'False Double: When a creature you can see hits you with an attack, use your reaction to create a duplicate of yourself. The attack automatically misses. Can only be used 1 time per game hour.'
+    opposingSchools:
+      - necromancy
+    adjoiningSchools:
+      - conjuration
+      - divination
+  00000C0E:
+    type: exit
+    color: blue
+    school: conjuration
+    name: Kyber of Calling
+    label: Blue
+    location: Dwarven Forge. This is a key.
+    boon: 'Blink Step: As a bonus action, teleport yourself or one willing creature within 30 feet to an unoccupied space you can see within 30 feet of the target. Can only be used 1 time per game hour.'
+    opposingSchools:
+      - divination
+    adjoiningSchools:
+      - illusion
+      - necromancy
+  00000C07:
+    type: exit
+    color: purple
+    school: divination
+    name: Kyber of Fate
+    label: Purple
+    location: Small Lava/Ruins Room. Clue with hanging corpse. This is a key.
+    boon: 'Twist Fate: When a creature within 30 feet is hit by an attack, use your reaction to make the attacker reroll the attack and use the new roll. Can only be used 1 time per game hour.'
+    opposingSchools:
+      - conjuration
+    adjoiningSchools:
+      - illusion
+      - necromancy
+  00000C09:
+    type: exit
+    color: red
+    school: evocation
+    name: Kyber of the Striking Hand
+    label: Red
+    location: Eye of the Statue, Lava Room. This is a key.
+    boon: 'Crystal Burst: As an action, choose a point within 60 feet. Creatures in a 10-foot-radius sphere make a DC 13 Dexterity save, taking 2d6 fire damage on a failure, or half as much damage on a success. The bearer chooses which creatures are affected. Can only be used 1 time per game hour.'
+    opposingSchools:
+      - enchantment
+    adjoiningSchools:
+      - transmutation
+      - abjuration
+  11000C33:
+    type: exit
+    color: black
+    school: necromancy
+    name: Kyber of the Final Door
+    label: Black
+    location: Cultist Tomb Cryptix, Death. This is a key.
+    boon: 'Graveward: As a bonus action, give yourself or a creature within 30 feet 1d8+2 temporary hit points. They last until depleted. Can only be used 1 time per game hour.'
+    opposingSchools:
+      - illusion
+    adjoiningSchools:
+      - divination
+      - conjuration
+  00000C05:
+    type: exit
+    color: pink
+    school: enchantment
+    name: Kyber of the Whispered Word
+    label: Magenta / Pink
+    location: Medusa Room. The chest in the room past the three-headed Medusa creature. This is a key.
+    boon: 'Compel: When a creature within 30 feet starts its turn, use your reaction. It makes a DC 13 Wisdom save. On a failure, the creature must obey a one-word command you give it until the command is complete. It will not harm itself. Can only be used 1 time per game hour.'
+    opposingSchools:
+      - evocation
+    adjoiningSchools:
+      - abjuration
+      - transmutation
+  11000C03:
+    type: lesser
+    color: black
+    school: necromancy
+    name: Necrotic Stone
+    label: Necrotic
+    location: Can be purchased from the Treasure Goblin for 3500gp.
+    boon: 'Life Siphon: As an action, choose one creature you can see within 30 feet. It makes a DC 13 Constitution saving throw. On a failure, it takes 2d6 necrotic damage, and you gain 1d6 + 2 temporary hit points. On a success, it takes half damage, and you gain no temporary hit points.'
+    opposingSchools:
+      - illusion
+    adjoiningSchools:
+      - divination
+      - conjuration
+  11000C00:
+    type: lesser
+    color: white
+    school: conjuration
+    name: Silver Stone
+    label: Silver
+    location: Located in the treasure chest at the end of the Gauntlet.
+    boon: 'Crystal Bulwark: As a bonus action, create a shimmering crystal panel in an unoccupied space you can see within 10 feet. The panel is 2 feet wide, 5 feet tall, and provides three-quarters cover.'
+    opposingSchools:
+      - divination
+    adjoiningSchools:
+      - illusion
+      - necromancy
+  11000C06:
+    type: lesser
+    color: blue
+    school: transmutation
+    name: Wrought Iron Stone
+    label: Wrought Iron
+    location: Can be purchased from the Treasure Goblin for 3500gp.
+    boon: 'Ironhide: As a bonus action, choose yourself or one creature you can see within 30 feet. The target gains a +2 bonus to AC. Can only be used 1 time per game hour.'
+    opposingSchools:
+      - abjuration
+    adjoiningSchools:
+      - enchantment
+      - evocation
+  00000C0F:
+    type: lesser
+    color: yellow
+    school: divination
+    name: Copper Stone
+    label: Copper
+    location: Can be purchased from the Treasure Goblin for 3500gp.
+    boon: 'Spot the Opening: As a bonus action, choose one creature you can see within 30 feet. The next attack roll made against that creature has advantage.'
+    opposingSchools:
+      - conjuration
+    adjoiningSchools:
+      - illusion
+      - necromancy
+  11000C0B:
+    type: lesser
+    color: yellow
+    school: illusion
+    name: Gold Stone
+    label: Gold
+    location: Cavern Small Room, Locked Chest.
+    boon: 'Barter Specialist: When you buy from a Treasure Goblin, use this crystal to get a discount equal to 5 percent times your Charisma modifier, minimum 5 percent, maximum 25 percent. This only applies to the bearer''s purchase. Can be used anytime you barter with Treasure Goblins.'
+    opposingSchools:
+      - necromancy
+    adjoiningSchools:
+      - conjuration
+      - divination

@@ -181,6 +181,31 @@
         <button class="btn btn-secondary" id="btn-emulation-remove" disabled>■ Remove Crystal</button>
         <span id="emulation-status" style="font-size:0.85rem; color:var(--muted);">Loading...</span>
       </div>
+      <div style="margin-top:30px; padding-top:20px; border-top:1px solid var(--border);">
+        <h2>Crystal Status</h2>
+        <p style="color:var(--muted); margin-bottom:14px; line-height:1.5;">Reset the discovered key crystal tracker without restarting the container.</p>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button class="btn btn-secondary" id="btn-emulation-reset-crystals">Reset Crystal Status</button>
+          <span id="emulation-reset-status" style="font-size:0.85rem; color:var(--muted);">Ready.</span>
+        </div>
+      </div>
+      <div style="margin-top:30px; padding-top:20px; border-top:1px solid var(--border);">
+        <h2>Hand Reader</h2>
+        <p style="color:var(--muted); margin-bottom:14px; line-height:1.5;">Emulate the hand reader state that reveals or hides the crystal boon on the player screen.</p>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button class="btn btn-primary" id="btn-emulation-hand-on">✋ Hand On</button>
+          <button class="btn btn-secondary" id="btn-emulation-hand-off">○ Hand Off</button>
+          <span id="emulation-hand-status" style="font-size:0.85rem; color:var(--muted);">Loading...</span>
+        </div>
+      </div>
+      <div style="margin-top:30px; padding-top:20px; border-top:1px solid var(--border);">
+        <h2>Player Gestures</h2>
+        <p style="color:var(--muted); margin-bottom:14px; line-height:1.5;">Trigger the same gesture behavior the player uses on the touchscreen.</p>
+        <div style="display:flex; align-items:center; gap:12px;">
+          <button class="btn btn-secondary" id="btn-emulation-swipe-down">↧ Swipe Down</button>
+          <span id="emulation-gesture-status" style="font-size:0.85rem; color:var(--muted);">Ready.</span>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -265,7 +290,7 @@
         const swatchColor = COLOR_HEX_MAP[c.color] || '#888';
         item.innerHTML = '<div class="crystal-swatch" style="background:' + swatchColor + ';"></div>' +
           '<div class="crystal-info"><div class="crystal-color-name">' + esc(c.color) + '</div>' +
-          '<div class="crystal-hex">0x' + esc(c.hex) + '</div></div>';
+        '<div class="crystal-hex">0x' + esc(c.hex) + ' · ' + esc(c.type || 'exit') + '</div></div>';
         item.addEventListener('click', () => { selectedCrystalHex = c.hex; renderCrystalList(); renderCrystalEditor(c); });
         el.appendChild(item);
       });
@@ -282,9 +307,10 @@
             <select id="ce-color">
               <option value="white"${c.color==='white'?' selected':''}>White — Abjuration</option>
               <option value="blue"${c.color==='blue'?' selected':''}>Blue — Conjuration</option>
-              <option value="yellow"${c.color==='yellow'?' selected':''}>Yellow — Divination</option>
+              <option value="purple"${c.color==='purple'?' selected':''}>Purple — Divination</option>
               <option value="pink"${c.color==='pink'?' selected':''}>Pink — Enchantment</option>
               <option value="red"${c.color==='red'?' selected':''}>Red — Evocation</option>
+              <option value="yellow"${c.color==='yellow'?' selected':''}>Yellow — Illusion</option>
               <option value="orange"${c.color==='orange'?' selected':''}>Orange — Illusion</option>
               <option value="black"${c.color==='black'?' selected':''}>Black — Necromancy</option>
               <option value="green"${c.color==='green'?' selected':''}>Green — Transmutation</option>
@@ -294,6 +320,25 @@
         <div class="field-row">
           <div class="field"><label>Name</label><input id="ce-name" value="${escAttr(c.name)}" style="font-size:1rem;"></div>
           <div class="field"><label>School (derived from colour)</label><input value="${escAttr(school)}" disabled style="text-transform:capitalize;"></div>
+        </div>
+        <div class="field">
+          <label>Crystal Type</label>
+          <select id="ce-type">
+            <option value="exit"${(c.type || 'exit')==='exit'?' selected':''}>Exit crystal</option>
+            <option value="lesser"${c.type==='lesser'?' selected':''}>Lesser boon stone</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Display Label</label><input id="ce-label" value="${escAttr(c.label || '')}" style="font-size:1rem;"></div>
+          <div class="field"><label>Location / Clue Text</label><input id="ce-location" value="${escAttr(c.location || '')}"></div>
+        </div>
+        <div class="field">
+          <label>Boon Text</label>
+          <textarea id="ce-boon">${esc(c.boon || '')}</textarea>
+        </div>
+        <div class="field-row">
+          <div class="field"><label>Opposing Schools, comma separated</label><input id="ce-opposing" value="${escAttr((c.opposingSchools || []).join(', '))}"></div>
+          <div class="field"><label>Adjoining Schools, comma separated</label><input id="ce-adjoining" value="${escAttr((c.adjoiningSchools || []).join(', '))}"></div>
         </div>
         <div style="margin-top:20px; display:flex; gap:8px;">
           <button class="btn btn-primary" onclick="saveCrystal('${escAttr(c.hex)}')">💾 Save Crystal</button>
@@ -306,18 +351,25 @@
       const newHex = document.getElementById('ce-hex').value.trim().toUpperCase().replace(/^0X/, '');
       const color = document.getElementById('ce-color').value;
       const name = document.getElementById('ce-name').value.trim();
+      const type = document.getElementById('ce-type').value;
+      const label = document.getElementById('ce-label').value.trim();
+      const location = document.getElementById('ce-location').value.trim();
+      const boon = document.getElementById('ce-boon').value.trim();
+      const opposingSchools = document.getElementById('ce-opposing').value.split(',').map(s => s.trim()).filter(Boolean);
+      const adjoiningSchools = document.getElementById('ce-adjoining').value.split(',').map(s => s.trim()).filter(Boolean);
+      const payload = { hex: newHex, type, color, name, label, location, boon, opposingSchools, adjoiningSchools };
       // If hex changed, delete old and create new
       if (newHex !== origHex.toUpperCase().replace(/^0X/, '')) {
         await fetch('/api/crystals/' + encodeURIComponent(origHex), { method: 'DELETE' });
         await fetch('/api/crystals', {
           method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ hex: newHex, color, name }),
+          body: JSON.stringify(payload),
         });
         selectedCrystalHex = newHex;
       } else {
         await fetch('/api/crystals/' + encodeURIComponent(origHex), {
           method: 'PUT', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ color, name }),
+          body: JSON.stringify(payload),
         });
       }
       await fetchCrystals();
@@ -456,7 +508,11 @@
       const select = document.getElementById('emulation-crystal');
       const insertButton = document.getElementById('btn-emulation-insert');
       const removeButton = document.getElementById('btn-emulation-remove');
+      const handOnButton = document.getElementById('btn-emulation-hand-on');
+      const handOffButton = document.getElementById('btn-emulation-hand-off');
       const status = document.getElementById('emulation-status');
+      const handStatus = document.getElementById('emulation-hand-status');
+      const resetStatus = document.getElementById('emulation-reset-status');
       try {
         const response = await fetch('/api/emulation/status');
         if (!response.ok) throw new Error('Emulator unavailable.');
@@ -480,11 +536,27 @@
         }
         insertButton.disabled = data.crystals.length === 0;
         removeButton.disabled = !data.active;
+        handStatus.textContent = data.handPresent ? 'Hand reader is ON.' : 'Hand reader is OFF.';
+        handStatus.style.color = data.handPresent ? '#4CAF50' : 'var(--muted)';
+        handOnButton.disabled = data.handPresent;
+        handOffButton.disabled = !data.handPresent;
+        if (resetStatus && data.landing) {
+          resetStatus.textContent = data.landing.foundExitSchools.length + ' / 8 key crystals found.';
+          resetStatus.style.color = data.landing.portalUnlocked ? '#4CAF50' : 'var(--muted)';
+        }
       } catch (error) {
         status.textContent = error.message;
         status.style.color = '#e94560';
         insertButton.disabled = true;
         removeButton.disabled = true;
+        handStatus.textContent = error.message;
+        handStatus.style.color = '#e94560';
+        handOnButton.disabled = true;
+        handOffButton.disabled = true;
+        if (resetStatus) {
+          resetStatus.textContent = error.message;
+          resetStatus.style.color = '#e94560';
+        }
       }
     }
 
@@ -523,6 +595,72 @@
         status.textContent = error.message;
         status.style.color = '#e94560';
         button.disabled = false;
+      }
+    });
+
+    async function setEmulatedHand(on) {
+      const status = document.getElementById('emulation-hand-status');
+      const handOnButton = document.getElementById('btn-emulation-hand-on');
+      const handOffButton = document.getElementById('btn-emulation-hand-off');
+      handOnButton.disabled = true;
+      handOffButton.disabled = true;
+      status.textContent = on ? 'Turning hand reader on...' : 'Turning hand reader off...';
+      try {
+        const response = await fetch(on ? '/api/emulation/hand-on' : '/api/emulation/hand-off', { method: 'POST' });
+        if (!response.ok) throw new Error('Hand reader state could not be changed.');
+        await loadEmulation();
+      } catch (error) {
+        status.textContent = error.message;
+        status.style.color = '#e94560';
+        handOnButton.disabled = false;
+        handOffButton.disabled = false;
+      }
+    }
+
+    document.getElementById('btn-emulation-hand-on').addEventListener('click', () => setEmulatedHand(true));
+    document.getElementById('btn-emulation-hand-off').addEventListener('click', () => setEmulatedHand(false));
+
+    document.getElementById('btn-emulation-reset-crystals').addEventListener('click', async () => {
+      const button = document.getElementById('btn-emulation-reset-crystals');
+      const status = document.getElementById('emulation-reset-status');
+      button.disabled = true;
+      status.textContent = 'Resetting crystal status...';
+      status.style.color = 'var(--muted)';
+      try {
+        const response = await fetch('/api/emulation/crystal-status-reset', { method: 'POST' });
+        if (!response.ok) throw new Error('Crystal status could not be reset.');
+        const data = await response.json();
+        const count = data.landing && Array.isArray(data.landing.foundExitSchools) ? data.landing.foundExitSchools.length : 0;
+        status.textContent = count + ' / 8 key crystals found.';
+        status.style.color = 'var(--muted)';
+        await loadEmulation();
+      } catch (error) {
+        status.textContent = error.message;
+        status.style.color = '#e94560';
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.getElementById('btn-emulation-swipe-down').addEventListener('click', async () => {
+      const button = document.getElementById('btn-emulation-swipe-down');
+      const status = document.getElementById('emulation-gesture-status');
+      button.disabled = true;
+      status.textContent = 'Sending swipe down...';
+      try {
+        const response = await fetch('/api/emulation/swipe-down', { method: 'POST' });
+        if (!response.ok) throw new Error('Swipe down could not be sent.');
+        status.textContent = 'Swipe down sent.';
+        status.style.color = '#4CAF50';
+      } catch (error) {
+        status.textContent = error.message;
+        status.style.color = '#e94560';
+      } finally {
+        setTimeout(() => {
+          button.disabled = false;
+          status.textContent = 'Ready.';
+          status.style.color = 'var(--muted)';
+        }, 1200);
       }
     });
 
