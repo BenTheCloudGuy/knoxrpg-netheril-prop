@@ -229,6 +229,19 @@ For UI changes, use the simulator and verify the landing, cross, page, return, r
 - The GM update stream runs `git pull` followed by `npm install --production`; successful updates require a service restart.
 - Live logs use `journalctl -u netheril`.
 
+## Screen Aperture (Foam Border)
+
+The physical 1920x1080 panel sits behind a hand-carved foam border with an irregular, torn cutout. The player UI keeps every element inside that aperture.
+
+- **Mechanism:** `fitAppToViewport()` uniformly scales and offsets the whole `#app` box (via `--app-scale`, `--app-dx`, `--app-dy`) into a safe rectangle. Because the scale is uniform, the school-web geometry never drifts; all views inherit the inset for free. Do not add a second per-view padding layer.
+- **Single authority:** `config/screen-aperture.json`, read and written through `GET`/`POST /api/aperture`. This is the source of truth for the aperture polygon and the derived safe insets. Do not hardcode insets anywhere else; the server-locked value survives power cycles and applies to every display.
+- **Measured (2026-09-20, first pass from an overhead grid photo):** safe insets top 150, right 195, bottom 165, left 165 (screen px); full aperture polygon stored in the JSON. Recalibrate whenever the foam is reseated; hand-carved foam is not repeatable.
+- **Calibration tools (on the native panel, foam on, in room light):**
+  - `/grid.html` renders a fullscreen labeled coordinate grid (1920x1080, 100px majors, center bullseye) for an overhead photo.
+  - In the player UI, `Alt+G` opens the grid overlay; tap the inner foam edge to record the aperture polygon, then `S` saves and locks it to `/api/aperture`.
+  - `Alt+C` opens a per-edge nudge overlay (GM-only debug frame).
+  - `?safeTop=..&safeRight=..&safeBottom=..&safeLeft=..` query params and `localStorage` provide per-display overrides; the server aperture is the default when neither is set.
+
 ## Change Discipline
 
 - Make focused edits and preserve live-prop behavior outside the requested feature.

@@ -95,7 +95,10 @@
 <body>
   <header>
     <h1>⚔️ Netheril — GM Console</h1>
-    <span class="hint">Player interface on port 3000</span>
+    <div style="display:flex; align-items:center; gap:16px;">
+      <span class="hint">Player interface on port 4000</span>
+      <button class="btn btn-secondary" id="btn-return-launcher" title="Stop this program and send the kiosk back to the Scrying Stone launcher">⏻ Return to Launcher</button>
+    </div>
   </header>
 
   <div class="tabs">
@@ -675,6 +678,23 @@
     const updateTerminal = document.getElementById('update-terminal');
     const btnRunUpdate = document.getElementById('btn-run-update');
     const btnRestart = document.getElementById('btn-restart-service');
+
+    // ==================== RETURN TO LAUNCHER ====================
+    document.getElementById('btn-return-launcher').addEventListener('click', async () => {
+      const btn = document.getElementById('btn-return-launcher');
+      if (!confirm('Stop this program and return the kiosk to the Scrying Stone launcher?')) return;
+      btn.disabled = true;
+      btn.textContent = '⏻ Returning...';
+      try {
+        const res = await fetch('/api/return-to-launcher', { method: 'POST' });
+        if (!res.ok) throw new Error('request failed');
+        btn.textContent = '⏻ Kiosk returning to launcher';
+      } catch (e) {
+        btn.disabled = false;
+        btn.textContent = '⏻ Return to Launcher';
+        alert('Could not return to launcher: ' + e.message);
+      }
+    });
 
     function appendLine(text, type) {
       const line = document.createElement('div');

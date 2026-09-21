@@ -42,8 +42,8 @@ if (!SIM_MODE) {
 const ROOT_DIR = path.join(__dirname, '..');
 const CONFIG_DIR = path.join(ROOT_DIR, 'config');
 
-const PORT = 3000;
-const GM_PORT = 3001;
+const PORT = Number(process.env.PLAYER_PORT) || 4000;
+const GM_PORT = Number(process.env.GM_PORT) || 4001;
 const SERIAL_PATH = '/dev/serial0';
 const SERIAL_BAUD = 9600;
 const MOTION_PATH = process.env.MOTION_PORT || '/dev/ttyACM0';
@@ -162,6 +162,8 @@ app.use((_req, res, next) => {
   next();
 });
 
+app.use(express.json());
+
 app.use(express.static(path.join(__dirname, 'public')));
 
 // --- Exit endpoint ---
@@ -188,6 +190,64 @@ app.get('/api/page/:school/:location', (req, res) => {
 
 // --- Font listing endpoint (shared between player + GM) ---
 app.get('/api/fonts', (_req, res) => res.json(listFonts()));
+
+// --- Screen aperture (foam border) ---
+// The physical screen sits behind a hand-carved foam border. The measured
+// aperture polygon and derived safe insets are locked here so the player UI
+// keeps all content inside the cutout. Measure with the on-screen grid
+// calibration (Alt+G) on the prop display.
+const APERTURE_FILE = path.join(CONFIG_DIR, 'screen-aperture.json');
+const DEFAULT_APERTURE = {
+  designWidth: 1920,
+  designHeight: 1080,
+  polygon: [],
+  safe: { top: 64, right: 150, bottom: 168, left: 140 },
+  measuredAt: null,
+  note: 'Estimated defaults. Run the grid calibration (Alt+G) on the prop screen to measure the real foam aperture, then Save to lock these values.',
+};
+
+function loadAperture() {
+  try {
+    return { ...DEFAULT_APERTURE, ...JSON.parse(fs.readFileSync(APERTURE_FILE, 'utf8')) };
+  } catch (e) {
+    return { ...DEFAULT_APERTURE };
+  }
+}
+
+function saveAperture(aperture) {
+  fs.writeFileSync(APERTURE_FILE, JSON.stringify(aperture, null, 2), 'utf8');
+}
+
+function clampInset(value, fallback) {
+  const n = Number(value);
+  return Number.isFinite(n) ? Math.max(0, Math.round(n)) : fallback;
+}
+
+app.get('/api/aperture', (_req, res) => res.json(loadAperture()));
+
+app.post('/api/aperture', (req, res) => {
+  const body = req.body || {};
+  const current = loadAperture();
+  const safe = body.safe || {};
+  const next = {
+    designWidth: clampInset(body.designWidth, current.designWidth) || 1920,
+    designHeight: clampInset(body.designHeight, current.designHeight) || 1080,
+    polygon: Array.isArray(body.polygon)
+      ? body.polygon.map(p => ({ x: Math.round(Number(p.x) || 0), y: Math.round(Number(p.y) || 0) }))
+      : current.polygon,
+    safe: {
+      top: clampInset(safe.top, current.safe.top),
+      right: clampInset(safe.right, current.safe.right),
+      bottom: clampInset(safe.bottom, current.safe.bottom),
+      left: clampInset(safe.left, current.safe.left),
+    },
+    measuredAt: new Date().toISOString(),
+    note: typeof body.note === 'string' ? body.note.slice(0, 300) : current.note,
+  };
+  saveAperture(next);
+  console.log('Screen aperture saved:', JSON.stringify(next.safe));
+  res.json({ ok: true, aperture: next });
+});
 
 // --- WebSocket ---
 const wss = new WebSocketServer({ server });
@@ -619,6 +679,18 @@ gmApp.get('/api/fonts', (_req, res) => res.json(listFonts()));
 gmApp.post('/api/reload-player', (_req, res) => {
   broadcast({ type: 'reload' });
   res.json({ ok: true });
+});
+
+// --- Send the kiosk back to the Scrying Stone launcher ---
+gmApp.post('/api/return-to-launcher', (_req, res) => {
+  const url = process.env.LAUNCHER_URL || 'http://localhost:3000/';
+  broadcast({ type: 'navigate', url });
+  res.json({ ok: true, url });
+  // When started by the launcher, self-exit after the kiosk has navigated so the
+  // launcher reclaims the port. In standalone dev, stay running.
+  if (process.env.MANAGED_BY_LAUNCHER === 'true') {
+    setTimeout(() => { console.log('Returning to launcher; shutting down app.'); process.exit(0); }, 2000);
+  }
 });
 
 // --- GM Crystal Emulation ---

@@ -1,0 +1,30 @@
+{
+  "designWidth": 1920,
+  "designHeight": 1080,
+  "polygon": [
+    { "x": 160, "y": 150 },
+    { "x": 700, "y": 110 },
+    { "x": 960, "y": 100 },
+    { "x": 1180, "y": 135 },
+    { "x": 1720, "y": 150 },
+    { "x": 1725, "y": 520 },
+    { "x": 1740, "y": 650 },
+    { "x": 1760, "y": 840 },
+    { "x": 1580, "y": 915 },
+    { "x": 1100, "y": 985 },
+    { "x": 960, "y": 990 },
+    { "x": 560, "y": 945 },
+    { "x": 300, "y": 965 },
+    { "x": 160, "y": 720 },
+    { "x": 130, "y": 560 },
+    { "x": 165, "y": 300 }
+  ],
+  "safe": {
+    "top": 150,
+    "right": 195,
+    "bottom": 165,
+    "left": 165
+  },
+  "measuredAt": "2026-09-20T21:06:00-04:00",
+  "note": "First pass measured from an overhead grid photo of the foam aperture. Fine-tune on the prop with Alt+G (tap the aperture edge) then S to lock, or Alt+C to nudge edges."
+}

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0">
+  <title>Netheril Aperture Grid</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100vw; height: 100vh; overflow: hidden;
+      background: #ffffff;
+      font-family: 'Segoe UI', 'DejaVu Sans', system-ui, sans-serif;
+      user-select: none; -webkit-user-select: none;
+      touch-action: none;
+    }
+    #grid { position: absolute; inset: 0; width: 100vw; height: 100vh; display: block; }
+    .minor { stroke: #d3e2f6; stroke-width: 1; }
+    .major { stroke: #6a89b8; stroke-width: 1.4; }
+    .axis  { stroke: #c0392b; stroke-width: 2.2; }
+    .tick  { fill: #123a63; font-size: 15px; font-weight: 600; }
+    .tick-edge { fill: #234; font-size: 13px; }
+    .bull  { fill: none; stroke: #c0392b; stroke-width: 2.4; }
+    .bulld { fill: #c0392b; }
+    .note  { fill: #123a63; font-size: 20px; font-weight: 700; text-anchor: middle; }
+    .corner { fill: none; stroke: #1a7a3a; stroke-width: 3; }
+    .cornerlbl { fill: #1a7a3a; font-size: 15px; font-weight: 700; }
+  </style>
+</head>
+<body>
+  <svg id="grid" viewBox="0 0 1920 1080" preserveAspectRatio="none" aria-hidden="true"></svg>
+  <script>
+    const NS = 'http://www.w3.org/2000/svg';
+    const svg = document.getElementById('grid');
+    const W = 1920, H = 1080;
+
+    function line(x1, y1, x2, y2, cls) {
+      const l = document.createElementNS(NS, 'line');
+      l.setAttribute('x1', x1); l.setAttribute('y1', y1);
+      l.setAttribute('x2', x2); l.setAttribute('y2', y2);
+      l.setAttribute('class', cls);
+      svg.appendChild(l);
+    }
+    function text(x, y, str, cls, anchor) {
+      const t = document.createElementNS(NS, 'text');
+      t.setAttribute('x', x); t.setAttribute('y', y);
+      t.setAttribute('class', cls);
+      if (anchor) t.setAttribute('text-anchor', anchor);
+      t.textContent = str;
+      svg.appendChild(t);
+    }
+
+    // Minor grid every 20px
+    for (let x = 0; x <= W; x += 20) if (x % 100 !== 0) line(x, 0, x, H, 'minor');
+    for (let y = 0; y <= H; y += 20) if (y % 100 !== 0) line(0, y, W, y, 'minor');
+    // Major grid every 100px
+    for (let x = 0; x <= W; x += 100) line(x, 0, x, H, 'major');
+    for (let y = 0; y <= H; y += 100) line(0, y, W, y, 'major');
+    // Center axes
+    line(W / 2, 0, W / 2, H, 'axis');
+    line(0, H / 2, W, H / 2, 'axis');
+
+    // X coordinate labels along the top edge, the center row, and the bottom edge
+    for (let x = 0; x <= W; x += 100) {
+      text(x + 3, 16, x, 'tick-edge');
+      text(x + 3, H / 2 - 6, x, 'tick');
+      text(x + 3, H - 6, x, 'tick-edge');
+    }
+    // Y coordinate labels along the left edge, the center column, and the right edge
+    for (let y = 0; y <= H; y += 100) {
+      if (y > 0) text(4, y - 4, y, 'tick-edge');
+      text(W / 2 + 6, y - 4, y, 'tick');
+      text(W - 44, y - 4, y, 'tick-edge');
+    }
+
+    // Center bullseye
+    const cx = W / 2, cy = H / 2;
+    [16, 40, 80].forEach(r => {
+      const c = document.createElementNS(NS, 'circle');
+      c.setAttribute('cx', cx); c.setAttribute('cy', cy); c.setAttribute('r', r);
+      c.setAttribute('class', 'bull'); svg.appendChild(c);
+    });
+    const dot = document.createElementNS(NS, 'circle');
+    dot.setAttribute('cx', cx); dot.setAttribute('cy', cy); dot.setAttribute('r', 4);
+    dot.setAttribute('class', 'bulld'); svg.appendChild(dot);
+    text(cx, cy - 96, 'CENTER 960 , 540', 'note', 'middle');
+
+    // Corner registration marks with coordinates
+    const corners = [
+      { x: 0, y: 0, dx: 1, dy: 1, lx: 12, ly: 26, lbl: '0 , 0' },
+      { x: W, y: 0, dx: -1, dy: 1, lx: W - 12, ly: 26, lbl: '1920 , 0', anchor: 'end' },
+      { x: 0, y: H, dx: 1, dy: -1, lx: 12, ly: H - 14, lbl: '0 , 1080' },
+      { x: W, y: H, dx: -1, dy: -1, lx: W - 12, ly: H - 14, lbl: '1920 , 1080', anchor: 'end' },
+    ];
+    corners.forEach(c => {
+      const p = document.createElementNS(NS, 'path');
+      const len = 60;
+      p.setAttribute('d', 'M' + (c.x + c.dx * len) + ',' + c.y + ' L' + c.x + ',' + c.y + ' L' + c.x + ',' + (c.y + c.dy * len));
+      p.setAttribute('class', 'corner'); svg.appendChild(p);
+      text(c.lx, c.ly, c.lbl, 'cornerlbl', c.anchor || 'start');
+    });
+
+    // Instruction line just above center
+    text(cx, cy + 116, 'Netheril aperture grid  -  photograph overhead, square to the screen', 'note', 'middle');
+  </script>
+</body>
+</html>

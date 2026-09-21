@@ -1,0 +1,18 @@
+{
+  "id": "dungeon-runner",
+  "name": "The Vault of the Starving Mind",
+  "short": "Dungeon Runner",
+  "school": "divination",
+  "description": "KnoxRPG crystal scrying dungeon experience.",
+  "playerPort": 4000,
+  "gmPort": 4001,
+  "playerUrl": "http://localhost:4000",
+  "gmUrl": "http://localhost:4001",
+  "readyPort": 4000,
+  "start": {
+    "cmd": "node",
+    "args": ["src/server.js"],
+    "cwd": "apps/dungeon-runner",
+    "env": { "PLAYER_PORT": "4000", "GM_PORT": "4001", "MANAGED_BY_LAUNCHER": "true" }
+  }
+}

@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920, height=1080, initial-scale=1.0">
+  <title>Scrying Stone Prop</title>
+  <style>
+    @font-face { font-family: 'Cinzel Decorative'; font-weight: 700; font-display: swap; src: url('/fonts/CinzelDecorative-Bold.woff2') format('woff2'); }
+    @font-face { font-family: 'Cinzel Decorative'; font-weight: 900; font-display: swap; src: url('/fonts/CinzelDecorative-Black.woff2') format('woff2'); }
+    @font-face { font-family: 'Cinzel'; font-weight: 500; font-display: swap; src: url('/fonts/Cinzel-Regular.woff2') format('woff2'); }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%; height: 100%; overflow: hidden;
+      font-family: 'Cinzel', serif;
+      user-select: none; -webkit-user-select: none;
+      touch-action: none;
+      background:
+        repeating-conic-gradient(rgba(0,0,0,0.02) 0% 25%, transparent 0% 50%) 0 0 / 4px 4px,
+        radial-gradient(ellipse at 30% 20%, #c4a87a, transparent 60%),
+        radial-gradient(ellipse at 70% 80%, #a08055, transparent 60%),
+        linear-gradient(160deg, #b89968 0%, #a0824e 30%, #8b6f3c 60%, #a08050 100%);
+      background-color: #9a7b4a;
+    }
+
+    #app {
+      width: 1920px; height: 1080px;
+      position: absolute;
+      left: 50%; top: 50%;
+      transform: translate(calc(-50% + var(--app-dx, 0px)), calc(-50% + var(--app-dy, 0px))) scale(var(--app-scale, 1));
+      display: flex; flex-direction: column;
+      align-items: center;
+      padding: 90px 80px;
+    }
+
+    h1.title {
+      font-family: 'Cinzel Decorative', 'Cinzel', serif;
+      font-weight: 900;
+      font-size: 96px;
+      letter-spacing: 0.06em;
+      color: rgba(46,30,12,0.96);
+      text-shadow:
+        2px 2px 0 rgba(240,225,185,0.55),
+        -1px -1px 0 rgba(40,25,10,0.35);
+      text-align: center;
+    }
+    .netline {
+      margin-top: 22px;
+      font-family: 'Cinzel', serif;
+      font-size: 34px;
+      letter-spacing: 0.03em;
+      color: rgba(70,50,24,0.9);
+      text-align: center;
+    }
+    .netline .sep { opacity: 0.5; margin: 0 16px; }
+    .netline b { font-weight: 700; color: rgba(46,30,12,0.96); }
+
+    .rule {
+      margin: 40px auto 10px;
+      width: 70%;
+      height: 2px;
+      background: linear-gradient(to right, transparent, rgba(70,48,20,0.5) 20%, rgba(70,48,20,0.5) 80%, transparent);
+    }
+    .apps-label {
+      margin-top: 18px;
+      font-family: 'Cinzel Decorative', 'Cinzel', serif;
+      font-size: 30px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: rgba(70,50,24,0.8);
+    }
+
+    #app-list {
+      margin-top: 40px;
+      width: 100%;
+      max-width: 1280px;
+      display: flex;
+      flex-direction: column;
+      gap: 34px;
+    }
+    .app-row {
+      display: flex;
+      align-items: center;
+      gap: 40px;
+      padding: 30px 44px;
+      border: 2px solid rgba(60,42,20,0.34);
+      border-radius: 18px;
+      background: radial-gradient(ellipse at 20% 30%, rgba(255,246,220,0.22), rgba(0,0,0,0.05) 75%);
+      box-shadow: inset 0 0 24px rgba(255,244,214,0.18);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+    .app-row:active { transform: scale(0.99); }
+    .app-row .sym {
+      width: 128px; height: 128px;
+      flex: 0 0 128px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      border: 2px solid rgba(var(--accent,196,165,90),0.5);
+      background: radial-gradient(circle, rgba(var(--accent,196,165,90),0.16), rgba(0,0,0,0.03) 70%);
+      box-shadow: 0 0 26px rgba(var(--accent,196,165,90),0.28), inset 0 0 18px rgba(var(--accent,196,165,90),0.12);
+    }
+    .app-row .sym img {
+      max-width: 84px; max-height: 84px;
+      filter:
+        drop-shadow(1px 1px 0 rgba(220,200,160,0.5))
+        drop-shadow(-1px -1px 0 rgba(40,25,10,0.4))
+        drop-shadow(0 0 16px rgba(var(--accent,196,165,90),0.7));
+    }
+    .app-row .meta { flex: 1; }
+    .app-row .name {
+      font-family: 'Cinzel Decorative', 'Cinzel', serif;
+      font-weight: 700;
+      font-size: 46px;
+      letter-spacing: 0.02em;
+      color: rgba(46,30,12,0.96);
+      text-shadow: 1px 1px 0 rgba(240,225,185,0.5);
+    }
+    .app-row .desc {
+      margin-top: 8px;
+      font-size: 28px;
+      color: rgba(70,50,24,0.82);
+    }
+    .app-row .launch {
+      font-family: 'Cinzel Decorative', 'Cinzel', serif;
+      font-size: 34px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(60,42,20,0.9);
+      text-shadow: 1px 1px 0 rgba(240,225,185,0.5), 0 0 16px rgba(var(--accent,196,165,90),0.3);
+    }
+    .app-row .launch::before { content: '\276F '; }
+
+    .empty {
+      margin-top: 60px;
+      font-size: 32px;
+      color: rgba(70,50,24,0.7);
+    }
+
+    /* Starting overlay */
+    #overlay {
+      position: fixed; inset: 0; z-index: 50;
+      display: none;
+      align-items: center; justify-content: center;
+      flex-direction: column;
+      background: rgba(20,12,4,0.82);
+      color: rgba(245,232,200,0.96);
+      font-family: 'Cinzel Decorative', 'Cinzel', serif;
+    }
+    #overlay.show { display: flex; }
+    #overlay .msg { font-size: 44px; letter-spacing: 0.05em; }
+    #overlay .sub { margin-top: 16px; font-family: 'Cinzel', serif; font-size: 26px; opacity: 0.8; }
+    .spinner {
+      margin-bottom: 34px;
+      width: 70px; height: 70px;
+      border: 6px solid rgba(245,232,200,0.25);
+      border-top-color: rgba(245,232,200,0.9);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .accent-abjuration    { --accent: 240,240,235; }
+    .accent-conjuration   { --accent: 79,195,247; }
+    .accent-divination    { --accent: 156,39,176; }
+    .accent-enchantment   { --accent: 244,143,177; }
+    .accent-evocation     { --accent: 239,83,80; }
+    .accent-illusion      { --accent: 255,213,79; }
+    .accent-necromancy    { --accent: 140,120,120; }
+    .accent-transmutation { --accent: 129,199,132; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1 class="title">Scrying Stone Prop</h1>
+    <div class="netline" id="netline">reading network...</div>
+    <div class="rule"></div>
+    <div class="apps-label">Programs</div>
+    <div id="app-list"></div>
+  </div>
+
+  <div id="overlay">
+    <div class="spinner"></div>
+    <div class="msg" id="overlay-msg">Awakening the vision...</div>
+    <div class="sub" id="overlay-sub"></div>
+  </div>
+
+  <script>
+    // ===== Safe area (foam border), shared with the apps =====
+    const SAFE_DEFAULTS = { top: 64, right: 150, bottom: 168, left: 140 };
+    const SAFE_KEYS = ['top', 'right', 'bottom', 'left'];
+    let safeArea = { ...SAFE_DEFAULTS };
+
+    function fitAppToViewport() {
+      const W = window.innerWidth, H = window.innerHeight, s = safeArea;
+      const availW = Math.max(320, W - s.left - s.right);
+      const availH = Math.max(180, H - s.top - s.bottom);
+      const scale = Math.min(availW / 1920, availH / 1080);
+      const app = document.getElementById('app');
+      app.style.setProperty('--app-scale', scale);
+      app.style.setProperty('--app-dx', ((s.left - s.right) / 2) + 'px');
+      app.style.setProperty('--app-dy', ((s.top - s.bottom) / 2) + 'px');
+    }
+    window.addEventListener('resize', fitAppToViewport);
+    fitAppToViewport();
+
+    (async () => {
+      try {
+        const res = await fetch('/api/aperture');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.safe) { for (const k of SAFE_KEYS) if (Number.isFinite(data.safe[k])) safeArea[k] = data.safe[k]; fitAppToViewport(); }
+        }
+      } catch (e) { /* ignore */ }
+    })();
+
+    // ===== Render launcher =====
+    function esc(s) { const d = document.createElement('div'); d.textContent = s == null ? '' : String(s); return d.innerHTML; }
+
+    let renderedAppIds = null;
+
+    function renderAppList(apps) {
+      const list = document.getElementById('app-list');
+      list.innerHTML = '';
+      if (!apps.length) {
+        list.innerHTML = '<div class="empty">No programs installed under /apps.</div>';
+        return;
+      }
+      for (const a of apps) {
+        const row = document.createElement('div');
+        row.className = 'app-row' + (a.school ? ' accent-' + a.school : '');
+        row.innerHTML =
+          (a.school ? '<div class="sym"><img src="/img/schools/' + esc(a.school) + '.png" alt="' + esc(a.school) + '"></div>' : '<div class="sym"></div>') +
+          '<div class="meta"><div class="name">' + esc(a.name) + '</div>' +
+          (a.description ? '<div class="desc">' + esc(a.description) + '</div>' : '') + '</div>' +
+          '<div class="launch">Launch</div>';
+        row.addEventListener('click', () => launchApp(a));
+        list.appendChild(row);
+      }
+    }
+
+    async function loadStatus() {
+      let data;
+      try {
+        const res = await fetch('/api/status', { cache: 'no-store' });
+        data = await res.json();
+      } catch (e) {
+        document.getElementById('netline').textContent = 'network unavailable';
+        return;
+      }
+      const n = data.network || {};
+      document.getElementById('netline').innerHTML =
+        'WiFi <b>' + esc(n.ssid) + '</b><span class="sep">/</span>' +
+        'IP <b>' + esc(n.ip) + '</b><span class="sep">/</span>' +
+        'host <b>' + esc(n.hostname) + '</b>';
+
+      const apps = data.apps || [];
+      const ids = apps.map((a) => a.id).join(',');
+      if (ids !== renderedAppIds) {
+        renderAppList(apps);
+        renderedAppIds = ids;
+      }
+    }
+
+    async function launchApp(a) {
+      const overlay = document.getElementById('overlay');
+      document.getElementById('overlay-msg').textContent = 'Awakening ' + a.short + '...';
+      document.getElementById('overlay-sub').textContent = 'Starting the program, please wait.';
+      overlay.classList.add('show');
+      try {
+        const res = await fetch('/api/apps/' + encodeURIComponent(a.id) + '/start', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok || !data.url) throw new Error(data.error || 'failed to start');
+        window.location.href = data.url;
+      } catch (e) {
+        document.getElementById('overlay-msg').textContent = 'The vision would not form.';
+        document.getElementById('overlay-sub').textContent = String(e.message || e);
+        setTimeout(() => overlay.classList.remove('show'), 3200);
+      }
+    }
+
+    loadStatus();
+    setInterval(loadStatus, 15000);
+  </script>
+</body>
+</html>

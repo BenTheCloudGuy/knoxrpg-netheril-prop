@@ -1,10 +1,10 @@
 {
-  "name": "scrying-stone-prop",
+  "name": "netheril-app",
   "version": "1.0.0",
-  "description": "Scrying Stone Prop launcher — loads prop apps (e.g. the KnoxRPG dungeon runner).",
-  "main": "launcher/server.js",
+  "description": "Netheril Prop — Interactive ancient puzzle interface with RFID crystal detection",
+  "main": "src/server.js",
   "scripts": {
-    "start": "node launcher/server.js"
+    "start": "sudo node src/server.js"
   },
   "dependencies": {
     "dotenv": "^17.3.1",

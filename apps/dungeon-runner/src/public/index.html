@@ -87,7 +87,55 @@
       display: flex;
       position: absolute;
       left: 50%; top: 50%;
-      transform: translate(-50%, -50%) scale(var(--app-scale, 1));
+      transform: translate(calc(-50% + var(--app-dx, 0px)), calc(-50% + var(--app-dy, 0px))) scale(var(--app-scale, 1));
+    }
+
+    /* ===== Safe area calibration overlay (foam border alignment) ===== */
+    #safe-overlay {
+      position: fixed; inset: 0; z-index: 2000;
+      display: none; pointer-events: none;
+      font-family: 'Cinzel', serif;
+    }
+    #safe-overlay.show { display: block; }
+    #safe-frame {
+      position: absolute;
+      border: 3px dashed rgba(60,255,150,0.9);
+      box-shadow: 0 0 0 100vmax rgba(0,0,0,0.4);
+    }
+    #safe-readout {
+      position: absolute; left: 50%; top: 50%;
+      transform: translate(-50%, -50%);
+      color: #6cff9f; background: rgba(0,0,0,0.72);
+      padding: 18px 26px; border-radius: 10px;
+      font-size: 22px; line-height: 1.5; text-align: left;
+      white-space: pre; letter-spacing: 0.02em;
+    }
+
+    /* ===== Grid measurement overlay (foam aperture mapping) ===== */
+    #grid-overlay {
+      position: fixed; inset: 0; z-index: 2100;
+      display: none;
+    }
+    #grid-overlay.show { display: block; }
+    #grid-svg {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      touch-action: none;
+    }
+    #grid-svg .grid-minor { stroke: rgba(120,180,255,0.16); stroke-width: 1; }
+    #grid-svg .grid-major { stroke: rgba(120,180,255,0.4); stroke-width: 1.5; }
+    #grid-svg .grid-axis  { stroke: rgba(120,200,255,0.7); stroke-width: 2; }
+    #grid-svg .grid-label { fill: rgba(150,210,255,0.85); font: 13px 'Cinzel', serif; }
+    #grid-svg .aperture-line { stroke: #6cff9f; stroke-width: 3; fill: rgba(60,255,150,0.10); }
+    #grid-svg .aperture-pt   { fill: #6cff9f; stroke: #05340f; stroke-width: 2; }
+    #grid-svg .aperture-num  { fill: #eafff2; font: 700 15px 'Cinzel', serif; }
+    #grid-svg .safe-rect     { fill: none; stroke: rgba(255,210,80,0.9); stroke-width: 2; stroke-dasharray: 12 8; }
+    #grid-readout {
+      position: absolute; left: 16px; top: 16px;
+      color: #6cff9f; background: rgba(0,0,0,0.78);
+      padding: 14px 18px; border-radius: 10px;
+      font: 16px/1.55 'Cinzel', serif; white-space: pre;
+      letter-spacing: 0.02em; max-width: 380px;
     }
     .side-col {
       width: 384px; height: 1080px;
@@ -251,6 +299,63 @@
       padding: 40px;
     }
     #page-view.show { display: flex; }
+
+    /* ===== Back button (clue page) ===== */
+    /* ===== Back control (clue page) - engraved into the parchment ===== */
+    #page-back {
+      position: absolute;
+      left: 40px;
+      bottom: 108px;
+      z-index: 6;
+      display: none;
+      align-items: baseline;
+      gap: 16px;
+      padding: 14px 10px 20px;
+      background: none;
+      border: none;
+      box-shadow: none;
+      font-family: 'Cinzel Decorative', 'Cinzel', serif;
+      font-size: 44px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(48,32,14,0.9);
+      text-shadow:
+        1px 1px 0 rgba(242,227,188,0.65),
+        -1px -1px 0 rgba(40,25,10,0.35),
+        0 0 20px rgba(var(--accent),0.22);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: color 0.25s ease, text-shadow 0.25s ease, transform 0.15s ease;
+    }
+    body.view-page #page-back { display: inline-flex; }
+    #page-back::before {
+      content: '\276E';
+      font-size: 34px;
+      color: rgba(70,48,20,0.78);
+      text-shadow: 1px 1px 0 rgba(242,227,188,0.55), 0 0 14px rgba(var(--accent),0.28);
+    }
+    #page-back::after {
+      content: '';
+      position: absolute;
+      left: 6px;
+      right: 10px;
+      bottom: 6px;
+      height: 2px;
+      background: linear-gradient(to right,
+        transparent,
+        rgba(70,48,20,0.5) 18%,
+        rgba(70,48,20,0.5) 82%,
+        transparent);
+      opacity: 0.85;
+    }
+    #page-back:active {
+      transform: scale(0.97);
+      color: rgba(70,48,20,1);
+      text-shadow:
+        1px 1px 0 rgba(242,227,188,0.65),
+        -1px -1px 0 rgba(40,25,10,0.4),
+        0 0 26px rgba(var(--accent),0.4);
+    }
 
     /* ===== Crystal games ===== */
     #game-view {
@@ -836,6 +941,14 @@
   </style>
 </head>
 <body>
+  <div id="safe-overlay">
+    <div id="safe-frame"></div>
+    <div id="safe-readout"></div>
+  </div>
+  <div id="grid-overlay">
+    <svg id="grid-svg" viewBox="0 0 1920 1080" preserveAspectRatio="none"></svg>
+    <div id="grid-readout"></div>
+  </div>
   <div id="app">
     <div id="crystal-view">
       <div class="school-web-panel">
@@ -885,7 +998,6 @@
         <div class="preview-message" id="landing-message">Seek the crystals to unlock the treasures, clues, and dangers.</div>
       </div>
       <div id="page-view">
-      <div id="page-view">
         <div id="page-scroll">
           <div id="page-content"></div>
         </div>
@@ -921,6 +1033,8 @@
       <div class="side-block" data-school="necromancy"><img src="/img/schools/necromancy.png" alt="necromancy"></div>
       <div class="side-block" data-school="transmutation"><img src="/img/schools/transmutation.png" alt="transmutation"></div>
     </div>
+
+    <button id="page-back">Back</button>
   </div>
 
   <script>
@@ -949,12 +1063,301 @@
 
     const COLOR_CLASSES = ['color-white','color-blue','color-purple','color-yellow','color-pink','color-red','color-orange','color-black','color-green'];
 
-    function fitAppToViewport() {
-      const scale = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
-      document.getElementById('app').style.setProperty('--app-scale', scale);
+    // ===== Safe area (foam border) =====
+    // The physical screen sits behind a hand-carved foam border with an irregular
+    // cutout. We uniformly scale and offset the whole app so no content renders
+    // under the foam, keeping the school-web geometry aligned. Insets are in
+    // screen pixels and are tunable via query params, localStorage, or the
+    // on-screen calibration overlay (Alt+C).
+    const SAFE_DEFAULTS = { top: 64, right: 150, bottom: 168, left: 140 };
+    const SAFE_KEYS = ['top', 'right', 'bottom', 'left'];
+    let safeArea = loadSafeArea();
+    let calibrating = false;
+    let calibEdge = 'bottom';
+
+    function loadSafeArea() {
+      const out = { ...SAFE_DEFAULTS };
+      try {
+        const saved = JSON.parse(localStorage.getItem('netheril-safe-area') || '{}');
+        for (const k of SAFE_KEYS) if (Number.isFinite(saved[k])) out[k] = saved[k];
+      } catch (e) {}
+      const params = new URLSearchParams(location.search);
+      for (const k of SAFE_KEYS) {
+        const name = 'safe' + k[0].toUpperCase() + k.slice(1);
+        if (params.has(name)) {
+          const v = Number(params.get(name));
+          if (Number.isFinite(v)) out[k] = Math.max(0, v);
+        }
+      }
+      return out;
     }
+
+    function saveSafeArea() {
+      try { localStorage.setItem('netheril-safe-area', JSON.stringify(safeArea)); } catch (e) {}
+    }
+
+    function updateSafeOverlay() {
+      const overlay = document.getElementById('safe-overlay');
+      if (!overlay) return;
+      const frame = document.getElementById('safe-frame');
+      const readout = document.getElementById('safe-readout');
+      const s = safeArea;
+      frame.style.left = s.left + 'px';
+      frame.style.top = s.top + 'px';
+      frame.style.right = s.right + 'px';
+      frame.style.bottom = s.bottom + 'px';
+      if (calibrating) {
+        readout.textContent =
+          'SAFE AREA CALIBRATION\n\n' +
+          SAFE_KEYS.map(k => (k === calibEdge ? '\u25B6 ' : '   ') + k.toUpperCase().padEnd(7) + safeArea[k] + ' px').join('\n') +
+          '\n\nTab: pick edge    Arrows: nudge\nShift+Arrow: x10    S: save\nR: reset    Esc / Alt+C: close';
+      }
+    }
+
+    function fitAppToViewport() {
+      const W = window.innerWidth, H = window.innerHeight;
+      const s = safeArea;
+      const availW = Math.max(320, W - s.left - s.right);
+      const availH = Math.max(180, H - s.top - s.bottom);
+      const scale = Math.min(availW / 1920, availH / 1080);
+      const dx = (s.left - s.right) / 2;
+      const dy = (s.top - s.bottom) / 2;
+      const app = document.getElementById('app');
+      app.style.setProperty('--app-scale', scale);
+      app.style.setProperty('--app-dx', dx + 'px');
+      app.style.setProperty('--app-dy', dy + 'px');
+      updateSafeOverlay();
+    }
+
+    function setCalibrating(on) {
+      calibrating = on;
+      document.getElementById('safe-overlay').classList.toggle('show', on);
+      updateSafeOverlay();
+    }
+
     window.addEventListener('resize', fitAppToViewport);
+    window.addEventListener('keydown', (e) => {
+      if (e.altKey && (e.key === 'c' || e.key === 'C')) {
+        setCalibrating(!calibrating);
+        e.preventDefault();
+        return;
+      }
+      if (!calibrating) return;
+      const step = e.shiftKey ? 10 : 1;
+      let handled = true;
+      if (e.key === 'Tab') {
+        const i = SAFE_KEYS.indexOf(calibEdge);
+        calibEdge = SAFE_KEYS[(i + 1) % SAFE_KEYS.length];
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowRight') {
+        safeArea[calibEdge] += step;
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowLeft') {
+        safeArea[calibEdge] = Math.max(0, safeArea[calibEdge] - step);
+      } else if (e.key === 's' || e.key === 'S') {
+        saveSafeArea();
+      } else if (e.key === 'r' || e.key === 'R') {
+        safeArea = { ...SAFE_DEFAULTS };
+        saveSafeArea();
+      } else if (e.key === 'Escape') {
+        setCalibrating(false);
+      } else {
+        handled = false;
+      }
+      if (handled) { e.preventDefault(); fitAppToViewport(); }
+    });
+
+    if (new URLSearchParams(location.search).get('calibrate') === '1') setCalibrating(true);
     fitAppToViewport();
+
+    // ===== Grid measurement mode (foam aperture mapping) =====
+    // Alt+G opens a labeled coordinate grid in design space (1920x1080). Tap along
+    // the inner edge of the foam cutout to record the aperture polygon. Save (S)
+    // derives a conservative safe rectangle, applies it, and locks it to the prop
+    // via POST /api/aperture so every display and future work respects it.
+    const SVGNS = 'http://www.w3.org/2000/svg';
+    const gridOverlay = document.getElementById('grid-overlay');
+    const gridSvg = document.getElementById('grid-svg');
+    const gridReadout = document.getElementById('grid-readout');
+    let gridding = false;
+    let aperturePolygon = [];
+
+    function buildGrid() {
+      if (gridSvg.dataset.built) return;
+      const frag = document.createDocumentFragment();
+      for (let x = 0; x <= 1920; x += 20) {
+        const line = document.createElementNS(SVGNS, 'line');
+        line.setAttribute('x1', x); line.setAttribute('y1', 0);
+        line.setAttribute('x2', x); line.setAttribute('y2', 1080);
+        line.setAttribute('class', x % 100 === 0 ? 'grid-major' : 'grid-minor');
+        frag.appendChild(line);
+        if (x % 100 === 0) {
+          const t = document.createElementNS(SVGNS, 'text');
+          t.setAttribute('x', x + 3); t.setAttribute('y', 16);
+          t.setAttribute('class', 'grid-label'); t.textContent = x;
+          frag.appendChild(t);
+        }
+      }
+      for (let y = 0; y <= 1080; y += 20) {
+        const line = document.createElementNS(SVGNS, 'line');
+        line.setAttribute('x1', 0); line.setAttribute('y1', y);
+        line.setAttribute('x2', 1920); line.setAttribute('y2', y);
+        line.setAttribute('class', y % 100 === 0 ? 'grid-major' : 'grid-minor');
+        frag.appendChild(line);
+        if (y % 100 === 0 && y > 0) {
+          const t = document.createElementNS(SVGNS, 'text');
+          t.setAttribute('x', 3); t.setAttribute('y', y - 4);
+          t.setAttribute('class', 'grid-label'); t.textContent = y;
+          frag.appendChild(t);
+        }
+      }
+      const ax = document.createElementNS(SVGNS, 'line');
+      ax.setAttribute('x1', 960); ax.setAttribute('y1', 0); ax.setAttribute('x2', 960); ax.setAttribute('y2', 1080); ax.setAttribute('class', 'grid-axis');
+      const ay = document.createElementNS(SVGNS, 'line');
+      ay.setAttribute('x1', 0); ay.setAttribute('y1', 540); ay.setAttribute('x2', 1920); ay.setAttribute('y2', 540); ay.setAttribute('class', 'grid-axis');
+      frag.appendChild(ax); frag.appendChild(ay);
+      const base = document.createElementNS(SVGNS, 'g');
+      base.appendChild(frag);
+      gridSvg.appendChild(base);
+      const dyn = document.createElementNS(SVGNS, 'g');
+      dyn.setAttribute('id', 'grid-dynamic');
+      gridSvg.appendChild(dyn);
+      gridSvg.dataset.built = '1';
+    }
+
+    function deriveSafeFromPolygon(poly, W, H) {
+      if (!poly.length) return null;
+      const left = [], right = [], top = [], bottom = [];
+      for (const p of poly) {
+        const d = { left: p.x, right: W - p.x, top: p.y, bottom: H - p.y };
+        const edge = Object.keys(d).reduce((a, b) => (d[b] < d[a] ? b : a));
+        ({ left, right, top, bottom })[edge].push(p);
+      }
+      return {
+        left: left.length ? Math.round(Math.max(...left.map(p => p.x))) : 0,
+        right: right.length ? Math.round(W - Math.min(...right.map(p => p.x))) : 0,
+        top: top.length ? Math.round(Math.max(...top.map(p => p.y))) : 0,
+        bottom: bottom.length ? Math.round(H - Math.min(...bottom.map(p => p.y))) : 0,
+      };
+    }
+
+    function renderAperture() {
+      const dyn = document.getElementById('grid-dynamic');
+      if (!dyn) return;
+      dyn.innerHTML = '';
+      const derived = deriveSafeFromPolygon(aperturePolygon, 1920, 1080);
+      if (derived) {
+        const rect = document.createElementNS(SVGNS, 'rect');
+        rect.setAttribute('x', derived.left); rect.setAttribute('y', derived.top);
+        rect.setAttribute('width', 1920 - derived.left - derived.right);
+        rect.setAttribute('height', 1080 - derived.top - derived.bottom);
+        rect.setAttribute('class', 'safe-rect');
+        dyn.appendChild(rect);
+      }
+      if (aperturePolygon.length > 1) {
+        const poly = document.createElementNS(SVGNS, 'polyline');
+        const pts = aperturePolygon.map(p => p.x + ',' + p.y).join(' ');
+        const closed = aperturePolygon.length > 2 ? ' ' + aperturePolygon[0].x + ',' + aperturePolygon[0].y : '';
+        poly.setAttribute('points', pts + closed);
+        poly.setAttribute('class', 'aperture-line');
+        dyn.appendChild(poly);
+      }
+      aperturePolygon.forEach((p, i) => {
+        const c = document.createElementNS(SVGNS, 'circle');
+        c.setAttribute('cx', p.x); c.setAttribute('cy', p.y); c.setAttribute('r', 7);
+        c.setAttribute('class', 'aperture-pt');
+        dyn.appendChild(c);
+        const t = document.createElementNS(SVGNS, 'text');
+        t.setAttribute('x', p.x + 10); t.setAttribute('y', p.y - 8);
+        t.setAttribute('class', 'aperture-num'); t.textContent = (i + 1);
+        dyn.appendChild(t);
+      });
+      const derivedText = derived
+        ? 'derived safe insets (px):\n  top ' + derived.top + '   right ' + derived.right + '\n  bottom ' + derived.bottom + '   left ' + derived.left
+        : 'derived safe insets: (add points)';
+      gridReadout.textContent =
+        'GRID CALIBRATION\n' +
+        'points: ' + aperturePolygon.length + '\n\n' +
+        derivedText + '\n\n' +
+        'Tap: add point on the foam edge\nZ: undo    X: clear\nS: save + lock to prop\nEsc / Alt+G: close';
+    }
+
+    function setGridding(on) {
+      gridding = on;
+      if (on) buildGrid();
+      gridOverlay.classList.toggle('show', on);
+      if (on) renderAperture();
+    }
+
+    function svgPointFromEvent(e) {
+      const r = gridSvg.getBoundingClientRect();
+      const cx = e.clientX, cy = e.clientY;
+      return {
+        x: Math.round((cx - r.left) / r.width * 1920),
+        y: Math.round((cy - r.top) / r.height * 1080),
+      };
+    }
+
+    gridSvg.addEventListener('pointerdown', (e) => {
+      if (!gridding) return;
+      aperturePolygon.push(svgPointFromEvent(e));
+      renderAperture();
+    });
+
+    async function saveApertureToProp() {
+      const derived = deriveSafeFromPolygon(aperturePolygon, 1920, 1080);
+      const payload = {
+        designWidth: 1920, designHeight: 1080,
+        polygon: aperturePolygon,
+        safe: derived || safeArea,
+        note: 'Measured on the prop screen via grid calibration.',
+      };
+      if (derived) {
+        for (const k of SAFE_KEYS) safeArea[k] = derived[k];
+        saveSafeArea();
+        fitAppToViewport();
+      }
+      try {
+        await fetch('/api/aperture', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+        gridReadout.textContent = 'GRID CALIBRATION\n\nSaved and locked to the prop.\nSafe insets applied.\n\nEsc / Alt+G: close';
+      } catch (err) {
+        gridReadout.textContent = 'GRID CALIBRATION\n\nApplied locally, server save failed:\n' + err.message + '\n\nEsc / Alt+G: close';
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.altKey && (e.key === 'g' || e.key === 'G')) {
+        setGridding(!gridding);
+        e.preventDefault();
+        return;
+      }
+      if (!gridding) return;
+      if (e.key === 'z' || e.key === 'Z' || e.key === 'Backspace') { aperturePolygon.pop(); renderAperture(); }
+      else if (e.key === 'x' || e.key === 'X') { aperturePolygon = []; renderAperture(); }
+      else if (e.key === 's' || e.key === 'S') { saveApertureToProp(); }
+      else if (e.key === 'Escape') { setGridding(false); }
+      else return;
+      e.preventDefault();
+    });
+
+    // Load the locked aperture from the prop and apply it unless a local override exists.
+    (async () => {
+      try {
+        const res = await fetch('/api/aperture');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (Array.isArray(data.polygon)) aperturePolygon = data.polygon.slice();
+        const params = new URLSearchParams(location.search);
+        const hasQuery = SAFE_KEYS.some(k => params.has('safe' + k[0].toUpperCase() + k.slice(1)));
+        const hasLocal = !!localStorage.getItem('netheril-safe-area');
+        if (!hasQuery && !hasLocal && data.safe) {
+          for (const k of SAFE_KEYS) if (Number.isFinite(data.safe[k])) safeArea[k] = data.safe[k];
+          fitAppToViewport();
+        }
+      } catch (e) {}
+    })();
 
     // ===== State =====
     let crystalActive = false;
@@ -1807,6 +2210,10 @@
       if (deltaY > 90) handlePageClose(event);
     });
 
+    const pageBack = document.getElementById('page-back');
+    pageBack.addEventListener('click', handlePageClose);
+    pageBack.addEventListener('touchend', event => { handlePageClose(event); });
+
     // Prevent rubber-band scroll on touch except inside page scroll area
     document.addEventListener('touchmove', (e) => {
       if (pageView.classList.contains('show') && pageScroll.contains(e.target)) return;
@@ -1875,6 +2282,8 @@
 
         } else if (data.type === 'reload') {
           location.reload();
+        } else if (data.type === 'navigate' && data.url) {
+          window.location.href = data.url;
         }
       };
 
